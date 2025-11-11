@@ -32,7 +32,6 @@ def load_file(path):
         raise ValueError("Unsupported file")
 m={}
 ind=0
-# Transform json dataframe -> transform all type to primitive type and transform table structure to a more readable table
 def help_deep_smart_flatten(data, new_key):
     global m
     global ind
