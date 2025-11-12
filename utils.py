@@ -69,8 +69,7 @@ def deep_smart_flatten(df):
     for index, row in df.iterrows():
         for col in df.columns:
             help_deep_smart_flatten(row[col], col)
-        ind+=1 
-    print(ind)
+        ind+=1
     for key in m:
        while(len(m[key])<ind):
            m[key].append(None) 
