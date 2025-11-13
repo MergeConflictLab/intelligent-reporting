@@ -2,14 +2,13 @@ from intelligent_reporting.loading.dataLoader import DataLoader
 from intelligent_reporting.profiling.schemaInferer import SchemaInferer
 from datetime import datetime
 import json
-from ydata_profiling import ProfileReport
-import pandas_datatypes
+#from ydata_profiling import ProfileReport
+#import pandas_datatypes
 from pandas.api.types import infer_dtype
 
 loader = DataLoader()
-file="data_file/amazon_sales_2025_INR.xml"
-print(file)
-df = loader.load(file)
+df = loader.load(file_path="mssql+pyodbc://@localhost\\SQLEXPRESS/anissa?driver=ODBC+Driver+17+for+SQL+Server&trusted_connection=yes",
+        table="Reviews")
 
 df, nulls_report = loader.standardize_nulls(df)
 

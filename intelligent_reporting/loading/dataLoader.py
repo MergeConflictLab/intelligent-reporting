@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import sqlalchemy
 import re
 exts = {
     "text": {
@@ -90,10 +91,22 @@ class DataLoader:
             return 0 
 
     
-    def load(self, file_path: str):
+    def load(self, file_path: str, table:str=None, query:str=None):
         """Load data based on file extension"""
+        if file_path.startswith(
+            ("postgresql://", "mysql://", "sqlite://", "mssql+pyodbc://")):
+            engine = sqlalchemy.create_engine(file_path)
+            if query:
+                df = pd.read_sql(query, engine)
+            elif table:
+                df = pd.read_sql(f"SELECT * FROM {table}", engine)
+            else:
+                raise ValueError(
+                    "Specify either table or query when connecting to a database."
+                )
+            engine.dispose()
+            return df
         ext = "." + file_path.split(".")[-1].lower()
-
         for value in exts.values():
             if ext in value["extensions"]:
                 method = value["method"]
