@@ -28,29 +28,20 @@ class AutoExploratory:
         }
 
         skew_values = self.df.skew(numeric_only=True).sort_values(ascending=False)
-        most_pos_col = skew_values.index[0]
-        most_neg_col = skew_values.index[-1]
+        highest_skewed_col = skew_values.index[0]
+        lowest_skewed_col = skew_values.index[-1]
 
-        print(f"Most positively skewed column: {skew_values.index[0]} (skew = {skew_values.iloc[0]:.2f})")
-        print(f"Most negatively skewed column: {skew_values.index[-1]} (skew = {skew_values.iloc[-1]:.2f})")
+        print(f"Most largest skewed column: {skew_values.index[0]} (skew = {skew_values.iloc[0]:.2f})")
+        print(f"Most lowest skewed column: {skew_values.index[-1]} (skew = {skew_values.iloc[-1]:.2f})")
 
-        summary_info["most_positively_skewed"] = {
-            "column": most_pos_col,
-            "skew_value": round(skew_values.iloc[0], 2)
-        }
-        summary_info["most_negatively_skewed"] = {
-            "column": most_neg_col,
-            "skew_value": round(skew_values.iloc[-1], 2)
+        summary_info["largest_skewed"] = { "column": most_pos_col, "skew_value": round(skew_values.iloc[0], 2)}
+        summary_info["lowest_skewed"] = {"column": most_neg_col,"skew_value": round(skew_values.iloc[-1], 2)
         }
 
-
-        print('-------------------')
         print(f'a statistical summary of the data: \n {self.df.describe(exclude="object")}')
         print(f'number of duplicated rows: {self.df.duplicated().sum()}')
     
-        summary_info["statistical_summary"] = (
-            self.df.describe(exclude="object").to_dict()
-        )
+        summary_info["statistical_summary"] = (self.df.describe(exclude="object").to_dict())
 
         summary_info["num_duplicated_rows"] = int(self.df.duplicated().sum())
 
