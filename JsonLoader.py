@@ -1,14 +1,19 @@
 import polars as pl
 class JsonLoader:
+
     def __init__(self):
         self.__rebuild_data_structure={}
         self.__ind=0
         self.__special_separator="###"
-    def loadfile(self, path):
-        file_extension=path.split(".")[-1].lower() 
+
+    def loadfile(self, file_path):
+        """
+        Load data from a file_path into a pl.DataFrame
+        """
+        file_extension=file_path.split(".")[-1].lower() 
         if(file_extension!="json"):
             raise ValueError("The input file must be in JSON format (.json)")
-        df = pl.read_json(path)   
+        df = pl.read_json(file_path)   
         return self._deep_smart_flatten_json(df)  
         
     def _help_deep_smart_flatten_json(self, data, new_key):
@@ -36,6 +41,7 @@ class JsonLoader:
            return
         for key in data:
             self._help_deep_smart_flatten_json(data[key], new_key+self.__special_separator+str(key))
+
     def _deep_smart_flatten_json(self, df):
         self.__rebuild_data_structure.clear()
         self.__ind=0
