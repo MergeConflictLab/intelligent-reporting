@@ -1,15 +1,9 @@
 import sqlite3
 import polars as pl
 import pandas as pd
-
-# import fastavro
-# from deltalake import DeltaTable
+import fastavro
 
 import sqlalchemy
-import pyarrow.parquet as pq
-import pyarrow.dataset as ds
-from typing import Union
-from pathlib import Path
 
 
 def load_data(
@@ -22,7 +16,8 @@ def load_data(
     - .csv, .parquet, .delta, .xlsx, .xls, .avro
     - SQLite (.db), SQL files (.sql), database URIs (Postgres, MySQL, etc.)
     """
-    # TODO: remove kwargs that are not needed for specific formats
+    # TODO: Port over Naouar's improvements for datasets
+    # TODO: Support JSON through Amine's Changes
     src = source.lower()
 
     if src.endswith(".csv"):
@@ -36,10 +31,6 @@ def load_data(
         with open(source, "rb") as f:
             records = list(fastavro.reader(f))
         return pl.DataFrame(records)
-    elif src.endswith(".delta"):
-
-        dt = DeltaTable(source)
-        return pl.from_arrow(dt.to_pyarrow_table())
     elif src.endswith(".db"):
         conn = sqlite3.connect(source)
         if query:
@@ -58,7 +49,7 @@ def load_data(
         df = pd.read_sql(sql, engine)
         return pl.from_pandas(df)
 
-    #
+    # TODO: Anissa to add support for more databases as needed
     elif (
         src.startswith("postgresql://")
         or src.startswith("mysql://")

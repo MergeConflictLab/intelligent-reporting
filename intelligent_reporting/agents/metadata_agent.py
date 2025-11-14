@@ -3,7 +3,7 @@ import json
 from langchain_ollama import ChatOllama
 from langchain.messages import HumanMessage, SystemMessage
 
-# TODO: Switch to LangChain Ollama integration when available
+# TODO: Add error handling and retries for robustness
 
 
 def metadata_query(

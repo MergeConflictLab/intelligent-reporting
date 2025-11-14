@@ -5,17 +5,17 @@ from scripts.load_datasets import load_data
 from scripts.clean import clean_dataframe
 
 
-df = load_data(
-    source="mysql://root:Anissa222@localhost:3306/test_db",
-    table="users",
-)
+# TODO: Port over Jamal's improvements for dataset sampling
+# NOTE: the cleaning and processing steps here are minimal and meant for basic preparation before metadata querying, it will need to be adapted based on dataset specifics.
+
+df = load_data(source="")
 df = clean_dataframe(df)
 schema = get_schema(df)
 description = describe_schema(df)
-print(schema)
 print(description)
+print(schema)
 raw_response = metadata_query(
-    model="mistral",
+    model="mistral",  # TODO: Boubker to test with other models and add support for model selection
     sample_data=df.head(5).to_dicts(),
     schema=schema,
     description=description,
