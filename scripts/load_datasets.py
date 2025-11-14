@@ -1,7 +1,7 @@
 import sqlite3
 import polars as pl
 import pandas as pd
-import fastavro
+#import fastavro
 
 import sqlalchemy
 
@@ -26,11 +26,7 @@ def load_data(
         return pl.read_parquet(source)
     elif src.endswith(".xlsx") or src.endswith(".xls"):
         return pl.from_pandas(pd.read_excel(source, **kwargs))
-    elif src.endswith(".avro"):
-
-        with open(source, "rb") as f:
-            records = list(fastavro.reader(f))
-        return pl.DataFrame(records)
+    
     elif src.endswith(".db"):
         conn = sqlite3.connect(source)
         if query:
