@@ -28,5 +28,9 @@ try:
 except json.JSONDecodeError:
     response = {"table_description": raw_response, "columns": []}
 
-print(supervisor_query(response, df))
+print(supervisor_query(
+    description=response,
+    model= "mistral", 
+    sample_data=df.head(5).to_dict(),))
+
 print(json.dumps(response, indent=2))

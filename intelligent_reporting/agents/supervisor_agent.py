@@ -25,10 +25,10 @@ def supervisor_query(
             content=f"""
         Use the following format:
         {[
-            {{
-              "name": "code idea",
-              "description": "A brief description of the code and what it would do."
-            }}, ...
+            {  
+                "name": "code idea",
+                "description": "A brief description of the code and what it would do."
+            }, ...
           ]
         }
         
