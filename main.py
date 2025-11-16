@@ -1,26 +1,24 @@
-from intelligent_reporting.loading.dataLoader import DataLoader
-from intelligent_reporting.profiling.schemaInferer import SchemaInferer
-from datetime import datetime
+from intelligent_reporting.loading.CSVLoader import CSVLoader
+from intelligent_reporting.loading.ParquerLoader import ParquetLoader
+from dotenv import load_dotenv
 import json
-#from ydata_profiling import ProfileReport
-#import pandas_datatypes
-from pandas.api.types import infer_dtype
+import os     
 
-loader = DataLoader()
-df = loader.load(file_path="mssql+pyodbc://@localhost\\SQLEXPRESS/anissa?driver=ODBC+Driver+17+for+SQL+Server&trusted_connection=yes",
-        table="Reviews")
+# -------------------- CSVLoader tester-----------------------#
+csvfile = "data_file/sample.csv"
+loader = CSVLoader()
 
-df, nulls_report = loader.standardize_nulls(df)
+gen = loader.load(csvfile, 5000)
 
-# inferer = SchemaInferer()
-# schema, df = inferer.infer_schema(df)
+for chunk in gen:
+    print(chunk.head(5))
 
-# inferer.dump_schema(schema, f"data_file/schema_{datetime.now()}.csv", "schema_output/schema")
+# -------------------- ParquetLoader tester ------------------# 
+parquetfile= "data.parquet"
 
-# profile = ProfileReport(df, minimal=True, infer_dtypes=True)
-# schema_summary = profile.get_description()
-# profile.to_file("schema_output/ydata_profiling/summary.json")
+loader = ParquetLoader()
 
-for column in df.columns :
-    type=infer_dtype(df[column])
-    print(f"{column} is {type}")
+gen = loader.load(parquetfile, chunksize=1000)
+
+for chunk in gen:
+    print(chunk.describe())
