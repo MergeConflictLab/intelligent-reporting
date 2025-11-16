@@ -17,7 +17,7 @@ description = describe_schema(df)
 print(description)
 print(schema)
 raw_response = metadata_query(
-    model="mistral",  # TODO: Boubker to test with other models and add support for model selection
+    model="qwen3-vl:235b-cloud",  # TODO: Boubker to test with other models and add support for model selection
     sample_data=df.head(5).to_dicts(),
     schema=schema,
     description=description,
@@ -28,9 +28,11 @@ try:
 except json.JSONDecodeError:
     response = {"table_description": raw_response, "columns": []}
 
-print(supervisor_query(
+output = (supervisor_query(
     description=response,
-    model= "mistral", 
-    sample_data=df.head(5).to_dict(),))
-
+    model= "qwen3-vl:235b-cloud", 
+    sample_data=df.head(5).to_dicts(),))
 print(json.dumps(response, indent=2))
+
+with open("output.json", "w") as f:
+    f.write(output)
