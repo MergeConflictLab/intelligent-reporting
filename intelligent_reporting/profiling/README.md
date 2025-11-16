@@ -9,17 +9,7 @@ It contains the following key classes:
   - Flags identifiers and constants.
   - Produces structured JSON schema representations suitable for pipelines.
 
-- **DataProfiler** / profiling logic – Handles **distribution, statistics, and correlations**:
-  - Computes summary statistics per column.
-  - Detects correlations and basic patterns.
-  - Optionally produces more advanced descriptive metrics for exploratory analysis.
-
-- **QualityChecker** – Handles **data health and validation**:
-  - Detects missing or inconsistent data.
-  - Flags potential issues (constant columns, high null ratios, duplicates).
-  - Provides alerts and warnings for downstream processing.
-
----
+--
 
 ### Example JSON schema output (from SchemaInferer)
 

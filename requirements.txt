@@ -1,16 +1,1 @@
-pandas
-pyarrow
-xlrd
-openpyxl
-xlwt
-pyxlsb
-odfpy
-fastparquet
-tables
-lxml
-html5lib
-beautifulsoup4
-sqlalchemy
-pyodbc
-# ydata_profiling
-# pandas_datatypes
+# required libraries
