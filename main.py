@@ -10,7 +10,7 @@ from scripts.clean import clean_dataframe
 # TODO: Port over Jamal's improvements for dataset sampling
 # NOTE: the cleaning and processing steps here are minimal and meant for basic preparation before metadata querying, it will need to be adapted based on dataset specifics.
 
-df = load_data(source="data/BMW-sales-data.csv")
+df = load_data(source="")
 df = clean_dataframe(df)
 schema = get_schema(df)
 description = describe_schema(df)
