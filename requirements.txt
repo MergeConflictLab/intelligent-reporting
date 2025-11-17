@@ -1,5 +1,1 @@
-polars
-sqlalchemy
-pyodbc
-langchain
-langchain-ollama
+# required libraries
