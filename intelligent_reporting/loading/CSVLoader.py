@@ -1,6 +1,5 @@
 import polars as pl
 import numpy as np
-import pyarrow as pa
 import math
 import csv
 import re
@@ -19,7 +18,7 @@ class CSVLoader:
             5. if it contains numbers, then all should be numbers and in ascending order
         """
         try:
-            sample = pl.read_csv(file_path, infer_schema_length=0,ignore_errors=True ,n_rows=2)
+            sample = pl.read_csv(file_path, has_header=False, infer_schema_length=0,ignore_errors=True ,n_rows=2)
             first_row = sample.row(0)
             second_row = sample.row(1) if sample.height > 1 else []
             third_row = sample.row(2) if sample.height > 2 else []
@@ -41,10 +40,11 @@ class CSVLoader:
                 if not s:
                     return False
                 
-                if " " in s:
+                if s == " ":
                     return False
                 
-                clean = re.sub(r"[_\-\s]+", "", s)
+                s_no_quotes = re.sub(r'^(["\'])(.*)\1$', r"\2", s)
+                clean = re.sub(r"[_\-\s]+", "", s_no_quotes)
 
                 # if numeric
                 if re.match(r"^[\d.]+$", clean):
@@ -88,6 +88,7 @@ class CSVLoader:
                 (len(third_row) == 0 or second_num == third_num)
             )
             # 4
+            
             identifier_ratio = sum(is_identifier_like(v) for v in first_row) / len(first_row)
             mostly_identifiers = identifier_ratio > 0.8            
             # 5 
