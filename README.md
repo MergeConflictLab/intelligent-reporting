@@ -39,10 +39,17 @@ Feedback Loop
 Combines all outputs—metadata, plots, insights—into a cohesive, publication-ready report.
 Pipeline: Markdown → HTML/PDF (via Jinja2, WeasyPrint, or ReportLab).
 #### Structure:
-- Overview and dataset summary
-- Key insights and statistics
-- Visualizations and narratives
-- Recommendations or anomaly highlights
+```text
+.
+├── README.md                   # Main project documentation
+├── requirements.txt            # Python dependencies
+│
+└── intelligent_reporting/
+    ├── agents/
+    ├── exporting/
+    ├── loading/
+    └── profiling/
+```
 
 ### Execution & Integration Layer
 - Isolates and executes code safely (Python sandbox, Docker, or notebook kernel).
