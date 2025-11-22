@@ -1,6 +1,4 @@
 import os
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
@@ -19,8 +17,8 @@ class DataViz:
 
         # Identify columns once for reuse
         self.numeric_cols = self.df.select_dtypes(include='number').columns.tolist()
-        self.cat_cols = self.df.select_dtypes(exclude=['number', 'datetime64']).columns.tolist()
-        self.datetime_cols = self.df.select_dtypes(include=['datetime64']).columns.tolist()
+        self.cat_cols = self.df.select_dtypes(include=['category','object']).columns.tolist()
+        self.datetime_cols = self.df.select_dtypes(include=['datetime64[ns]']).columns.tolist()
 
     def _save_plot(self, fig, name):
         fname = f"{name}.png"
@@ -50,7 +48,7 @@ class DataViz:
             print("No categorical columns found.")
             return
 
-        for col in self.cat_cols[:2]:
+        for col in self.cat_cols[:3]:
             top_categories = (
                 self.df[col].value_counts()
                 .head(self.top_k_categories)
@@ -58,39 +56,39 @@ class DataViz:
             )
             top_categories.columns = [col, "count"]
 
-            fig, ax = plt.subplots(figsize=(6, 4))
-            sns.barplot(data=top_categories, x="count", y=col, ax=ax)
+            fig, ax = plt.subplots(figsize=(10, 4))
+            sns.barplot(data=top_categories, y="count", x=col, ax=ax)
             ax.set_title(f"Top {self.top_k_categories} categories for {col}")
+            plt.xticks(rotation=45, ha="right")
+
             self._save_plot(fig, f"bar_{col}")
 
     def plot_time_series_columns(self):
-        datetime_cols = self.df.select_dtypes(include=['datetime64']).columns.tolist()
-        
-        if not datetime_cols:
+        #datetime_cols = self.df.select_dtypes(include=['datetime64[ns]']).columns.tolist()
+
+        if not self.datetime_cols:
             print("No datetime columns found for time series plotting.")
             return
+        
+        df_num = self.df.select_dtypes(include='number')
+        if df_num.empty:
+            print("No numeric columns found to plot against datetime columns.")
+            return
+        
+        best_num = df_num.var().idxmax()
 
         os.makedirs(self.figures_dir, exist_ok=True)
 
-        for col in datetime_cols[:2]:  # limit to 2 if too many
-            # Choose a numeric column to plot against time
-            numeric_cols = self.df.select_dtypes(include='number').columns.tolist()
-            if not numeric_cols:
-                print(f"No numeric columns found to plot against {col}")
-                continue
+        for col in self.datetime_cols[:2]: 
+            time_df = self.df.groupby(col, as_index=False)[best_num].mean().sort_values(col)
+
             
             # Use the first numeric column by default
-            num_col = numeric_cols[0]
-
-            # Aggregate by date (if many rows per day)
-            time_df = self.df.groupby(col, as_index=False)[num_col].mean().sort_values(col)
-
-            # Plot
             fig, ax = plt.subplots(figsize=(8, 4))
-            sns.lineplot(data=time_df, x=col, y=num_col, ax=ax, marker="o")
-            ax.set_title(f"{num_col} over time ({col})")
+            sns.lineplot(data=time_df, x=col, y=best_num, ax=ax, marker="o")
+            ax.set_title(f"{best_num} over time ({col})")
             ax.set_xlabel(col)
-            ax.set_ylabel(num_col)
+            ax.set_ylabel(best_num)
             ax.grid(True, linestyle="--", alpha=0.6)
 
             self._save_plot(fig, f"time_series_{col}")

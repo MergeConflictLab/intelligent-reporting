@@ -7,14 +7,13 @@ import matplotlib.pyplot as plt
 
 class DataCorrelations:
     def __init__(self, df, figures_dir="figures", json_dir="json_output"):
-        self.df = df.copy()
+        self.df = df
         self.figures_dir = figures_dir
         self.json_dir = json_dir
         os.makedirs(figures_dir, exist_ok=True)
         os.makedirs(json_dir, exist_ok=True)
 
     def _clean_numeric(self):
-        # Drop non-numeric or ID-like columns
         df_num = self.df.select_dtypes(include=[np.number])
         df_num = df_num.loc[:, ~df_num.columns.str.lower().str.contains('id|unnamed')]
         df_num = df_num.loc[:, df_num.nunique() > 1]  # remove constant columns
@@ -26,15 +25,7 @@ class DataCorrelations:
 
         plt.figure(figsize=(12, 8))
         sns.heatmap(
-            corr,
-            annot=True,
-            fmt=".2f",
-            cmap="coolwarm",
-            center=0,
-            square=True,
-            cbar_kws={'shrink': 0.8},
-            linewidths=0.5
-        )
+            corr,annot=corr.shape[0] <= 20,fmt=".2f",cmap="coolwarm",center=0,square=True,cbar_kws={'shrink': 0.8},linewidths=0.5)
         plt.title("Correlation Heatmap", fontsize=14, weight='bold')
         plt.xticks(rotation=45, ha='right')
         plt.yticks(rotation=0)
@@ -46,7 +37,7 @@ class DataCorrelations:
 
         # Save correlation matrix as JSON
         corr_json_path = os.path.join(self.json_dir, "correlation_matrix.json")
-        corr.round(3).to_json(corr_json_path, orient="index")
+        corr.round(2).to_json(corr_json_path, orient="index")
 
         return corr, heatmap_path, corr_json_path
 
@@ -61,7 +52,7 @@ class DataCorrelations:
         results = []
         for (col1, col2), value in strong_pairs.items():
             fig, ax = plt.subplots(figsize=(6, 4))
-            sns.regplot(x=df_num[col1], y=df_num[col2], data = self.df)
+            sns.regplot(x=col1, y=col2, data=df_num)
             ax.set_title(f"{col1} vs {col2}\n(r = {value:.2f})", fontsize=12)
             ax.set_xlabel(col1)
             ax.set_ylabel(col2)
