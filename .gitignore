@@ -122,6 +122,12 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+
+# data profiling output
+figures/
+json_output/
+sample_output.json
+
 # IDE
 .vscode/
 .idea/
