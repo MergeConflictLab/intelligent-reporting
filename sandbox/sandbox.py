@@ -2,18 +2,40 @@ import os
 import uuid
 import subprocess
 import glob
+import hashlib
+import re
 
 
-def run_in_docker_sandbox(code: str, data_dir="data", image="llm-sandbox"):
-    task_id = str(uuid.uuid4())
+def run_in_docker_sandbox(
+    code: str,
+    data_dir="data",
+    image="llm-sandbox",
+    name: str | None = None,  # NEW: optional descriptive name
+):
+    """
+    Run a given code snippet inside a Docker sandbox with restricted resources.
+    The code is saved to a uniquely named file and executed within the container.
+    All output files are prefixed with a unique task ID for easy identification.
+    """
+    # --- Generate descriptive task_id ---
+    if name:
+        # sanitize: remove weird characters, compact spaces, keep things file-safe
+        safe = re.sub(r"[^a-zA-Z0-9_\-]+", "_", name).strip("_")
+        base = safe[:40] if safe else "task"
+    else:
+        # fallback to hash derived from the code
+        base = hashlib.sha1(code.encode("utf-8")).hexdigest()[:12]
 
-    tasks_dir = os.path.abspath("temp_tasks")
-    outputs_dir = os.path.abspath("task_outputs")
+    # still ensure uniqueness by appending 4-char suffix
+    suffix = uuid.uuid4().hex[:4]
+    task_id = f"{base}_{suffix}"
+
+    tasks_dir = os.path.abspath("sandbox/code")
+    outputs_dir = os.path.abspath("sandbox/output")
 
     os.makedirs(tasks_dir, exist_ok=True)
     os.makedirs(outputs_dir, exist_ok=True)
 
-    # Inject code so all plots and files get saved properly
     header = f"""
 import os
 OUTPUT_DIR = "/sandbox/output"
@@ -31,12 +53,10 @@ plt.savefig = _custom_savefig
 
     code = header + "\n" + code
 
-    # Write code file
     task_file = os.path.join(tasks_dir, f"{task_id}.py")
     with open(task_file, "w") as f:
         f.write(code)
 
-    # Docker command
     docker_cmd = [
         "docker",
         "run",
@@ -59,10 +79,8 @@ plt.savefig = _custom_savefig
     process = subprocess.Popen(
         docker_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
     )
-
     stdout, stderr = process.communicate()
 
-    # Collect artifacts
     artifacts = [
         p
         for p in glob.glob(os.path.join(outputs_dir, "*"))

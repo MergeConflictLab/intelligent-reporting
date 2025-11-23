@@ -137,4 +137,8 @@ results/
 *.csv
 *.xlsx
 *.xls
+*.json
 main.py
+script.py
+code/
+
