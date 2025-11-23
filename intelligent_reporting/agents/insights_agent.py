@@ -3,6 +3,8 @@ import json
 from langchain_ollama import ChatOllama
 from langchain.messages import HumanMessage, SystemMessage
 
+from scripts.utils import json_fix
+
 
 def insights_query(img, summary_data, sample_data, description):
     """Run a prompt through local Ollama using LangChain integration."""
@@ -54,7 +56,9 @@ def insights_query(img, summary_data, sample_data, description):
 
     try:
         response = llm.invoke(llm_prompt)
-        return response.content.strip()
+        content = json_fix(response.content)
+        print(content)
+        return content
 
     except Exception as e:
         raise e
