@@ -1,8 +1,0 @@
-# required libraries
-polars
-sqlalchemy
-pyodbc
-langchain
-langchain-openai
-langchain-ollama
-python-dotenv
