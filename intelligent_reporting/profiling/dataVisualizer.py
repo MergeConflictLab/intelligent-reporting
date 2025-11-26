@@ -37,31 +37,96 @@ class DataViz:
         top_vars = variances.head(2)
 
         for col in top_vars.index:
-            fig, ax = plt.subplots(figsize=(6, 4))
-            sns.histplot(data=self.df, x=col, kde=True, ax=ax)
-            ax.set_title(f"Distribution of {col} (Variance={top_vars[col]:.2f})")
+            fig, ax = plt.subplots(figsize=(8, 5))
+
+            # Clean, modern theme
+            sns.set_theme(style="whitegrid")
+            sns.histplot(
+                data=self.df,
+                x=col,
+                kde=True,
+                ax=ax,
+                edgecolor="black",
+                linewidth=1.2,
+                bins=25,
+                color="#4C72B0"   # professional blue
+            )
+
+            # Title & labels
+            ax.set_title(
+                f"Distribution of {col} (Variance = {top_vars[col]:.2f})",
+                fontsize=14,
+                fontweight="bold"
+            )
+            ax.set_xlabel(col, fontsize=12)
+            ax.set_ylabel("Frequency", fontsize=12)
+
+            # Remove unnecessary spines
+            sns.despine()
+
+            # Layout & Save
+            fig.tight_layout()
             self._save_plot(fig, f"hist_{col}")
+            plt.close(fig)
 
     # Plot top categories for categorical columns
     def plot_categorical_columns(self):
-        if not self.cat_cols:
-            print("No categorical columns found.")
-            return
+            if not self.cat_cols:
+                print("No categorical columns found.")
+                return
 
-        for col in self.cat_cols[:3]:
-            top_categories = (
-                self.df[col].value_counts()
-                .head(self.top_k_categories)
-                .reset_index()
-            )
-            top_categories.columns = [col, "count"]
+            for col in self.cat_cols[:3]:
+                top_categories = (
+                    self.df[col].value_counts()
+                    .head(self.top_k_categories)
+                    .reset_index()
+                )
+                top_categories.columns = [col, "count"]
 
-            fig, ax = plt.subplots(figsize=(10, 4))
-            sns.barplot(data=top_categories, y="count", x=col, ax=ax)
-            ax.set_title(f"Top {self.top_k_categories} categories for {col}")
-            plt.xticks(rotation=45, ha="right")
+                # --- Professional Styling ---
+                sns.set_theme(style="whitegrid")
+                sns.set_palette("Set2")
 
-            self._save_plot(fig, f"bar_{col}")
+                fig, ax = plt.subplots(figsize=(10, 4))
+
+                # Crisp bars with edgecolor
+                sns.barplot(
+                    data=top_categories,
+                    y="count",
+                    x=col,
+                    ax=ax,
+                    edgecolor="black",
+                    linewidth=1.3
+                )
+
+                # Title styling
+                ax.set_title(
+                    f"Top {self.top_k_categories} Categories for {col}",
+                    fontsize=14,
+                    fontweight="bold"
+                )
+
+                # Axis labels
+                ax.set_xlabel(col, fontsize=12)
+                ax.set_ylabel("Count", fontsize=12)
+
+                # Rotate & clean x labels
+                plt.xticks(rotation=45, ha="right")
+
+                # Value labels on top of bars
+                for i, v in enumerate(top_categories["count"]):
+                    ax.text(
+                        i, v + max(top_categories["count"]) * 0.02,
+                        str(v),
+                        ha="center",
+                        fontsize=10
+                    )
+
+                sns.despine()
+                fig.tight_layout()
+
+                self._save_plot(fig, f"bar_{col}")
+                plt.close(fig)
 
     def plot_time_series_columns(self):
         #datetime_cols = self.df.select_dtypes(include=['datetime64[ns]']).columns.tolist()

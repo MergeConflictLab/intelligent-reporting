@@ -23,52 +23,115 @@ class DataCorrelations:
         df_num = self._clean_numeric()
         corr = df_num.corr(method='pearson')
 
-        plt.figure(figsize=(12, 8))
+        # Professional styling
+        sns.set_theme(style="white")
+
+        plt.figure(figsize=(16, 8))
         sns.heatmap(
-            corr,annot=corr.shape[0] <= 20,fmt=".2f",cmap="coolwarm",center=0,square=True,cbar_kws={'shrink': 0.8},linewidths=0.5)
-        plt.title("Correlation Heatmap", fontsize=14, weight='bold')
-        plt.xticks(rotation=45, ha='right')
-        plt.yticks(rotation=0)
+            corr,
+            annot=corr.shape[0] <= 20,       # your logic preserved
+            fmt=".2f",
+            cmap="viridis",
+            center=0,
+            square=True,
+            cbar_kws={'shrink': 0.8},
+            linewidths=0.7,                  # cleaner separation
+            linecolor="white"                # makes cells sharper
+        )
+
+        # Title
+        plt.title("Correlation Heatmap", fontsize=16, weight='bold')
+
+        # Axis styling
+        plt.xticks(rotation=45, ha='right', fontsize=10)
+        plt.yticks(rotation=0, fontsize=10)
+
+        # Cleaner edges
+        sns.despine(left=True, bottom=True)
+
         plt.tight_layout()
 
+        # Save heatmap
         heatmap_path = os.path.join(self.figures_dir, "correlation_heatmap.png")
         plt.savefig(heatmap_path, dpi=300, bbox_inches='tight')
         plt.close()
 
-        # Save correlation matrix as JSON
+        # Save correlation matrix as JSON (your existing logic)
         corr_json_path = os.path.join(self.json_dir, "correlation_matrix.json")
         corr.round(2).to_json(corr_json_path, orient="index")
 
         return corr, heatmap_path, corr_json_path
 
+
     def plot_top_correlations(self, threshold=0.7, top_n=5):
         df_num = self._clean_numeric()
+
+        # Professional minimalist style
+        #plt.style.use("seaborn-v0_8 whitegrid")
+        sns.set_palette("deep")
+
         corr = df_num.corr().abs().unstack().sort_values(ascending=False)
         corr = corr[corr < 1]  # remove self-correlations
 
-        # Keep only strong correlations
         strong_pairs = corr[corr > threshold].drop_duplicates().head(top_n)
 
         results = []
         for (col1, col2), value in strong_pairs.items():
-            fig, ax = plt.subplots(figsize=(6, 4))
-            sns.regplot(x=col1, y=col2, data=df_num)
-            ax.set_title(f"{col1} vs {col2}\n(r = {value:.2f})", fontsize=12)
-            ax.set_xlabel(col1)
-            ax.set_ylabel(col2)
-            plt.tight_layout()
+
+            fig, ax = plt.subplots(figsize=(7, 4))
+
+            # Cleaner scatter + softer regression line
+            sns.regplot(
+                x=col1,
+                y=col2,
+                data=df_num,
+                ax=ax,
+                scatter_kws={
+                    "s": 35,
+                    "alpha": 0.6,
+                    "edgecolor": "none"
+                },
+                line_kws={
+                    "linewidth": 2.2,
+                    "alpha": 0.9
+                }
+            )
+
+            # PROFESSIONAL TITLE
+            ax.set_title(
+                f"{col1} vs {col2}  |  r = {value:.2f}",
+                fontsize=14,
+                weight="bold",
+                pad=12
+            )
+
+            # Clean axis labels
+            ax.set_xlabel(col1, fontsize=12)
+            ax.set_ylabel(col2, fontsize=12)
+
+            # Remove extra spines for a modern look
+            sns.despine(left=False, bottom=False)
+
+            # Better spacing
+            fig.tight_layout()
 
             path = os.path.join(self.figures_dir, f"corr_{col1}_{col2}.png")
-            plt.savefig(path, dpi=300, bbox_inches='tight')
+            plt.savefig(path, dpi=300, bbox_inches="tight")
             plt.close(fig)
 
-            results.append({"col1": col1, "col2": col2, "correlation": float(value), "path": path})
+            results.append({
+                "col1": col1,
+                "col2": col2,
+                "correlation": float(value),
+                "path": path
+            })
 
-        # Save summary JSON
         summary_path = os.path.join(self.json_dir, "top_correlations.json")
         pd.DataFrame(results).to_json(summary_path, orient="records", indent=2)
 
         return results, summary_path
+
+
 
     def run(self):
         print("Generating correlation heatmap...")

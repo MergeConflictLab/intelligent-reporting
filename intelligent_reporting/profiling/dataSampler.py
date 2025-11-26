@@ -2,7 +2,7 @@
 from sklearn.model_selection import train_test_split
 
 class Sampling:
-    def __init__(self, df, max_rows = 100):
+    def __init__(self, df, max_rows = 10):
         self.df = df
         self.max_rows = max_rows
         self.frac = min(1.0, max_rows / len(df)) 
@@ -57,7 +57,7 @@ class Sampling:
         return self.df.sample(n=n, random_state=42).reset_index(drop=True)
 
 
-    def run_simple(self, output_path="sample_output.json", orient='records'):
+    def run_simple(self, output_path="sample_output.json", df_path = 'sample.csv', orient='records'):
         print("Checking sampling strategy...")
 
         sample = self.no_sample()
@@ -79,5 +79,13 @@ class Sampling:
         except Exception as e:
             print(f"Failed to save Json: {e}")
             return None
+        try:
+            sample.to_csv(df_path, index =False)
+            print('csv sample is available')
+        except Exception as e:
+            print(f'failed to save csv sample: {e} ')
+            return None
+
+
 
         return output_path
