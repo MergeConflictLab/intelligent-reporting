@@ -57,7 +57,6 @@ def insights_query(img, summary_data, sample_data, description):
     try:
         response = llm.invoke(llm_prompt)
         content = json_fix(response.content)
-        print(content)
         return content
 
     except Exception as e:

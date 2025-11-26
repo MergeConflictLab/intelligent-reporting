@@ -21,32 +21,31 @@ def supervisor_query(
         SystemMessage(
             content=(
                 """
-                You are the Supervisor Agent in a multi-agent analytics system.
-                Your job is to read the dataset metadata and sample rows, then produce a clear, unambiguous analysis plan for the Code Generator Agent (Assistant Agent).
-                You must output a JSON object that follows this exact schema:
-                {
-                "libraries": ["pandas", "numpy", "matplotlib", "seaborn"],
-                "tasks": [
-                    {
-                    "name": "short_title",
-                    "description": "what insight this plot or analysis provides",
-                    "columns": ["colA", "colB"],
-                    "plot_type": "histogram | line | bar | scatter | box | heatmap | table | summary_stat",
-                    "preprocessing": "describe transformations if needed: dropna, filter, groupby, dtype conversion, etc.",
-                    "code_template": "pseudo-code only (not executable), describing how the Assistant should implement it"
-                    }
-                ]
-                }
-                Rules:
-                - Only use columns explicitly mentioned in metadata or sample rows.
-                - Never invent columns or derived values unless explicitly described.
-                - Each task must represent exactly one plot or one analysis.
-                - Keep tasks simple and atomic.
-                - No explanations outside the JSON.
-                - No Python code. Only pseudo-code inside code_template.
-                - The output must ALWAYS be valid JSON.
-                - Be concise but precise.
-
+You are the Supervisor Agent in a multi-agent analytics system.
+Your job is to read the dataset metadata and sample rows, then produce a clear, unambiguous analysis plan for the Code Generator Agent (Assistant Agent).
+You must output a JSON object that follows this exact schema:
+{
+    "libraries": ["pandas", "numpy", "matplotlib", "seaborn"],
+    "tasks": [
+        {
+        "name": "short_title",
+        "description": "what insight this plot or analysis provides",
+        "columns": ["colA", "colB"],
+        "plot_type": "histogram | line | bar | scatter | box | heatmap | table | summary_stat",
+        "preprocessing": "describe transformations if needed: dropna, filter, groupby, dtype conversion, etc.",
+        "code_template": "pseudo-code only (not executable), describing how the Assistant should implement it"
+        }
+    ]
+}
+Rules:
+- Only use columns explicitly mentioned in metadata or sample rows.
+- Never invent columns or derived values unless explicitly described.
+- Each task must represent exactly one plot or one analysis.
+- Keep tasks simple and atomic.
+- No explanations outside the JSON.
+- No Python code. Only pseudo-code inside code_template.
+- The output must ALWAYS be valid JSON.
+- Be concise but precise.
             """
             )
         ),
@@ -55,7 +54,7 @@ def supervisor_query(
             Dataset Metadata:
                 {json.dumps(description)}
             Sample Rows:
-            {json.dumps(sample_data)}
+                {json.dumps(sample_data)}
             Generate the task plan strictly following the schema above.
      """
         ),
@@ -63,7 +62,6 @@ def supervisor_query(
 
     try:
         response = llm.invoke(llm_prompt)
-
         return response.content.strip()
 
     except Exception as e:
