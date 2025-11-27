@@ -14,7 +14,7 @@ def csvSplitToChunks(path):
         df.write_csv(f"{OUTPUT_PATH}csv/file{offset+CHUNK_SIZE}.csv")
         offset += CHUNK_SIZE
 
-# 1GB of data chunk processed in 1 minute still a little slow
+# 1GB of data chunk split in 1 minute still a little slow
 def jsonSPlitToChunks(path):
     global CHUNK_SIZE
     global OUTPUT_PATH
@@ -74,7 +74,7 @@ def jsonSPlitToChunks(path):
                        out.write(obj + "\n,")
               out.write("]")    
            content_values=[]     
-                        
+
 folder = Path("./data")
 
 for file in folder.iterdir():
