@@ -6,3 +6,6 @@ langchain
 langchain-openai
 langchain-ollama
 python-dotenv
+nbformat
+python-toon
+# required libraries
