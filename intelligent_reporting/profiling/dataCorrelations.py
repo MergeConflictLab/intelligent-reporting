@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 #from itertools import combinations
 
 class DataCorrelations:
-    def __init__(self, df, figures_dir="figures", json_dir="json_output"):
+    def __init__(self, df, figures_dir="EDA_output/figures", json_dir="EDA_output"):
         self.df = df
         self.figures_dir = figures_dir
         self.json_dir = json_dir

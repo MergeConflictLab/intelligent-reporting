@@ -57,7 +57,7 @@ class Sampling:
         return self.df.sample(n=n, random_state=42).reset_index(drop=True)
 
 
-    def run_simple(self, output_path="sample_output.json", df_path = 'sample.csv', orient='records'):
+    def run_simple(self, output_path="EDA_output/sample_output.json", df_path = 'EDA_output/sample.csv', orient='records'):
         print("Checking sampling strategy...")
 
         sample = self.no_sample()
@@ -79,7 +79,7 @@ class Sampling:
         except Exception as e:
             print(f"Failed to save Json: {e}")
             return None
-        try:
+'''        try:
             sample.to_csv(df_path, index =False)
             print('csv sample is available')
         except Exception as e:
@@ -88,4 +88,4 @@ class Sampling:
 
 
 
-        return output_path
+        return output_path'''

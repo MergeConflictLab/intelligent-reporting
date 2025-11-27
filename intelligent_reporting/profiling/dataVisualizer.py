@@ -8,8 +8,8 @@ warnings.filterwarnings("ignore")
 class DataViz:
     def __init__(self, df):
         self.df = df
-        self.output_dir = "json_output"
-        self.figures_dir = "figures"
+        self.output_dir = "EDA_output"
+        self.figures_dir = "EDA_output/figures"
         self.top_k_categories = 5
 
         os.makedirs(self.output_dir, exist_ok=True)

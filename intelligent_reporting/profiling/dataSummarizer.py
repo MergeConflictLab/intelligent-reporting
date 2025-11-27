@@ -10,8 +10,8 @@ sns.set_palette("Set2")
 class AutoExploratory:
     def __init__(self, df):
         self.df = df
-        self.output_dir = "json_output"
-        self.figures_dir = "figures"
+        self.output_dir = "EDA_output"
+        self.figures_dir = "EDA_output/figures"
         os.makedirs(self.output_dir, exist_ok=True)
         os.makedirs(self.figures_dir, exist_ok=True)
 

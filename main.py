@@ -5,8 +5,8 @@ from intelligent_reporting.profiling.dataSampler import Sampling
 import pandas as pd
 
 
-
-df = pd.read_csv('https://raw.githubusercontent.com/jamal-eddine-obeidat/intermediate-real-world-data-cleaning-salad-health/refs/heads/master/cleaned_salad_data.csv')
+df = pd.read_csv('data/cleaned_salad_data.csv')
+#df = pd.read_csv('https://raw.githubusercontent.com/jamal-eddine-obeidat/intermediate-real-world-data-cleaning-salad-health/refs/heads/master/cleaned_salad_data.csv')
 #df = pd.read_csv('/mnt/c/Users/jamal/Downloads/archive/youtube_recommendation_dataset.csv')
 
 data_sample = Sampling(df)

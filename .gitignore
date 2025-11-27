@@ -144,3 +144,5 @@ results/
 *.xlsx
 *.xls
 main.py
+
+EDA_output
