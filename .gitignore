@@ -146,3 +146,6 @@ results/
 main.py
 
 EDA_output
+sandbox/
+output.json
+run_pipeline.py

@@ -5,8 +5,8 @@ import time
 import subprocess
 import nbformat as nbf
 from intelligent_reporting.agents.metadata_agent import metadata_query
-'''from intelligent_reporting.agents.supervisor_agent import supervisor_query
-from intelligent_reporting.agents.assistant_agent import assistant_query
+from intelligent_reporting.agents.supervisor_agent import supervisor_query
+'''from intelligent_reporting.agents.assistant_agent import assistant_query
 from sandbox.sandbox import run_in_docker_sandbox'''
 from scripts.script import (
     load_data,
