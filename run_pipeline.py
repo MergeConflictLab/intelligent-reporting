@@ -1,34 +1,22 @@
 import json
 import os
-import glob
 import time
-import subprocess
 import nbformat as nbf
+
 from intelligent_reporting.agents.metadata_agent import metadata_query
-from intelligent_reporting.agents.supervisor_agent import supervisor_query
-'''from intelligent_reporting.agents.assistant_agent import assistant_query
-from sandbox.sandbox import run_in_docker_sandbox'''
-from scripts.script import (
-    load_data,
-    get_schema,
-    describe_schema,
-    clean_dataframe,
-)
+from scripts.script import load_data, get_schema, describe_schema, clean_dataframe
 from intelligent_reporting.agents.insight_agent import insights_query
-from scripts.utils import json_fix, strip_code_fence
-from scripts.utils import encode_image
+from scripts.utils import strip_code_fence, encode_image
 
 
 def main():
-    # --- LOAD & PREP DATA ---
+    # --- LOAD DATA ---
     df = load_data(source="data/cleaned_salad_data.csv")
     df = clean_dataframe(df)
     schema = get_schema(df)
     description = describe_schema(df)
 
-    print(description)
-    print(schema)
-    print('--------------')
+    print("--------------")
 
     # --- METADATA AGENT ---
     raw_response = metadata_query(
@@ -38,14 +26,72 @@ def main():
         description=description,
     )
 
-    response = json_fix(raw_response)
+    response = strip_code_fence(raw_response)
+    print(response)
+    try:
+        metadata = json.loads(response)
+    except:
+        metadata = {"table_description": response, "columns": []}
+
+    print("==============")
+
+    # --- LOAD SUMMARY.JSON (IMPORTANT FIX) ---
+    with open("EDA_output/data_summary.json", "r") as f:
+        summary_data = json.load(f)
+
+    figures_dir = "EDA_output/figures"
+    insights = []
+
+    # Loop over all plots
+    for file_name in os.listdir(figures_dir):
+
+        if not file_name.lower().endswith((".png", ".jpg", ".jpeg")):
+            continue
+
+        img_path = os.path.join(figures_dir, file_name)
+        encoded_image = encode_image(img_path)
+
+        # --- INSIGHT AGENT ---
+        insight = insights_query(
+            img=encoded_image,
+            summary_data=response,
+            sample_data=df.head(5).to_dicts(),
+            description=metadata,
+        )
+
+        insights.append({
+            "figure": file_name,
+            "insight": insight
+        })
+
+        print("\nInsight generated for:", file_name)
+        print(json.dumps(insight, indent=2, ensure_ascii=False))
+
+        time.sleep(3)
+
+    # optional: save final insight json
+    with open("EDA_output/insights.json", "w") as f:
+        json.dump(insights, f, indent=2, ensure_ascii=False)
+
+    print("\nAll insights generated and saved to EDA/insights.json")
+
+
+    '''
+        raw_response = metadata_query(
+        model="deepseek-v3.1:671b-cloud",
+        sample_data=df.head(5).to_dicts(),
+        schema=schema,
+        description=description,
+    )
+    response = strip_code_fence(raw_response)
+    print(response)
     if isinstance(response, str):
         try:
             response = json.loads(response)
         except Exception:
-            response = {"table_description": response, "columns": []}
+            response = {"table_description": response, "columns": []}'''
 
-    # --- SUPERVISOR AGENT ---
+    '''# --- SUPERVISOR AGENT ---
     if (
         isinstance(response, dict)
         and "columns" in response
@@ -189,7 +235,7 @@ def main():
         json.dump(insights, f)
 
     print("Notebook 'generated_tasks.ipynb' created successfully.")
-
+'''
 
 if __name__ == "__main__":
     main()

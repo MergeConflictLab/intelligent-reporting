@@ -18,7 +18,7 @@ def insights_query(img, summary_data, sample_data, description):
             content=(
                 "You are a senior data analyst. "
                 "Your job is to extract concise, high-value insights using: "
-                "1) the dataset summary, 2) the high-level description, and 3) the provided image. "
+                "1) the dataset summary, 2) the metadata description, and 3) the provided image. "
                 "Respond only with valid JSON. "
                 "The JSON must be an array of objects, each with: "
                 '"insight", "reasoning", "evidence".'
@@ -29,7 +29,7 @@ def insights_query(img, summary_data, sample_data, description):
                 {
                     "type": "text",
                     "text": f"""
-                    Use the data summary, description, and image to produce insights.
+                    Use the data summary, metadata, and image to produce insights.
 
                     Respond strictly in this JSON format:
 
