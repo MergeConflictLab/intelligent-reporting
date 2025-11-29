@@ -2,7 +2,7 @@
 from sklearn.model_selection import train_test_split
 
 class Sampling:
-    def __init__(self, df, max_rows = 10):
+    def __init__(self, df, max_rows = 3):
         self.df = df
         self.max_rows = max_rows
         self.frac = min(1.0, max_rows / len(df)) 

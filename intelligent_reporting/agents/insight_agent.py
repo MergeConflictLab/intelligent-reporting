@@ -12,12 +12,11 @@ def insights_query(img, summary_data, sample_data, description):
         model="qwen3-vl:235b-cloud",
         temperature=0.2,
     )
-
     llm_prompt = [
         SystemMessage(
             content=(
-                "You are a senior data analyst. "
-                "Your job is to extract concise, high-value insights using: "
+                "You are a senior data analyst and storytelling master. "
+                "extract concise, high-value insights and tell detailed stories for technical and non technical audience using: "
                 "1) the dataset summary, 2) the metadata description, and 3) the provided image. "
                 "Respond only with valid JSON. "
                 "The JSON must be an array of objects, each with: "
@@ -29,7 +28,7 @@ def insights_query(img, summary_data, sample_data, description):
                 {
                     "type": "text",
                     "text": f"""
-                    Use the data summary, metadata, and image to produce insights.
+                    Use the data summary, metadata, and image to produce one high valuable insight.
 
                     Respond strictly in this JSON format:
 

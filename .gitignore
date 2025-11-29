@@ -137,7 +137,6 @@ sample_output.json
 .DS_Store
 
 # Project specific
-data/
 output/
 results/
 *.csv
@@ -145,7 +144,8 @@ results/
 *.xls
 main.py
 
-EDA_output
+
 sandbox/
 output.json
-run_pipeline.py
+
+scripts/

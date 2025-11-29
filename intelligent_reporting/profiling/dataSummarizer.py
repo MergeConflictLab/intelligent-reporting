@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-sns.set_theme(style="whitegrid")  # clean background
+sns.set_theme(style="whitegrid")  
 sns.set_palette("Set2")
 
 class AutoExploratory:
@@ -51,11 +51,11 @@ class AutoExploratory:
         summary_info["low_skew"] = {"column": top_tail_skew.index[-1], "skew_value": round(top_tail_skew.iloc[-1], 2)}
 
         print('-------------------')
-        print(f'a statistical summary of the data: \n {numeric_df.describe()}')
+        print(f'a statistical summary of the data: \n {numeric_df.describe().round(1)}')
         print(f'number of duplicated rows: {self.df.duplicated().sum()}')
 
         summary_info['missing_values'] = self.df.isnull().sum().to_dict()
-        summary_info["statistical_summary"] = numeric_df.describe().to_dict()
+        summary_info["statistical_summary"] = numeric_df.describe().round(1).to_dict()
 
         constant_cols = {}
         for col in self.df.columns:
@@ -71,9 +71,9 @@ class AutoExploratory:
         plt.figure(figsize=(12, 6))
 
         plt.subplot(1, 2, 1)
-        sns.boxplot(x=data_to_plot, width=0.5, fliersize=5, linewidth=2)  # narrower box, thicker lines
+        sns.boxplot(x=data_to_plot, width=0.5, fliersize=5, linewidth=2)  
         plt.title(f"{plot_title} (Boxplot)", fontsize=14, fontweight='bold')
-        plt.xlabel("")  # optional, remove default xlabel for cleaner look
+        plt.xlabel("")  
         plt.ylabel("Values", fontsize=12)
 
         plt.subplot(1, 2, 2)
@@ -97,33 +97,25 @@ class AutoExploratory:
 
     def plot_outliers(self, outlier_counts):
 
-    # Set theme and palette
         sns.set_theme(style="whitegrid")
         sns.set_palette("Set2")
 
-        # Figure
         fig, ax = plt.subplots(figsize=(10, 6))
 
-        # Data
         cols = list(outlier_counts.keys())
         counts = list(outlier_counts.values())
 
-        # Barplot with professional styling
         sns.barplot(x=cols, y=counts, ax=ax, edgecolor='black', linewidth=1.5)
 
-        # Titles and labels
         ax.set_title("Outlier Count per Column", fontsize=16, fontweight='bold')
         ax.set_xlabel("Columns", fontsize=12)
         ax.set_ylabel("Outlier Count", fontsize=12)
 
-        # Rotate x-axis labels
         plt.xticks(rotation=45, ha="right")
 
-        # Add value labels on top of bars
         for i, count in enumerate(counts):
             ax.text(i, count + max(counts)*0.01, str(count), ha='center', va='bottom', fontsize=10)
 
-        # Layout and save
         plt.tight_layout()
         path = os.path.join(self.figures_dir, "outliers_per_column.png")
         plt.savefig(path, dpi=300, bbox_inches='tight')  # high-quality save
