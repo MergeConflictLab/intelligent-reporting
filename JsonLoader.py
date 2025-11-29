@@ -6,11 +6,13 @@ class JsonLoader:
         self.__special_separator="###"
     def loadfile(self, path):
         file_extension=path.split(".")[-1].lower() 
-        if(file_extension!="json"):
-            raise ValueError("The input file must be in JSON format (.json)")
-        df = pl.read_json(path)   
-        return self._deep_smart_flatten_json(df)  
-        
+        if(file_extension not in ["json", "jsonl"]):
+           raise ValueError("The input file must be in JSON format (.json or jsonl)")
+        if(file_extension=="jsonl"):
+           df = pl.read_ndjson(path)
+        else:    
+           df = pl.read_json(path)
+        return self._deep_smart_flatten_json(df) 
     def _help_deep_smart_flatten_json(self, data, new_key):
         if(data is None):
            if(new_key not in self.__rebuild_data_structure):
