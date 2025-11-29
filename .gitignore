@@ -122,6 +122,12 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+
+# data profiling output
+figures/
+json_output/
+sample_output.json
+
 # IDE
 .vscode/
 .idea/
@@ -131,10 +137,15 @@ dmypy.json
 .DS_Store
 
 # Project specific
-data/
 output/
 results/
 *.csv
 *.xlsx
 *.xls
 main.py
+
+
+sandbox/
+output.json
+
+scripts/

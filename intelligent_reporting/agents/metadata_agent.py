@@ -3,8 +3,6 @@ import json
 from langchain_ollama import ChatOllama
 from langchain.messages import HumanMessage, SystemMessage
 
-# TODO: Add error handling and retries for robustness
-
 
 def metadata_query(
     model: str,
@@ -20,20 +18,24 @@ def metadata_query(
     )
     llm_prompt = [
         SystemMessage(
-            content="You are a data analyst. Summarize the dataset structure based on the provided schema. Respond **only** in JSON with keys 'table_description' and 'columns', where 'columns' is a list of column summaries with actual text descriptions about each column."
+            content="""
+You are a data analyst. 
+Summarize the dataset structure based on the provided schema. 
+Respond **only** in JSON with keys 'table_description' and 'columns', where 'columns' is a list of column summaries with actual text descriptions about each column.
+"""
         ),
         HumanMessage(
             content=f"""
-        Use the following format:
+Use the following format:
+{{
+    "table_description": "A brief summary of the table contents.",
+    "columns": [
         {{
-          "table_description": "A brief summary of the table contents.",
-          "columns": [
-            {{
-              "name": "column_name",
-              "description": "A brief description of the column."
-            }}, ...
-          ]
-        }}
+            "name": "column_name",
+            "description": "A brief description of the column."
+        }},...
+    ] 
+}}
         
         Data: {json.dumps(sample_data)}
         Schema: {json.dumps(schema)}
@@ -47,3 +49,4 @@ def metadata_query(
         return response.content.strip()
     except Exception as e:
         raise e
+
