@@ -7,7 +7,7 @@ class JsonLoader:
     def loadfile(self, path):
         file_extension=path.split(".")[-1].lower() 
         if(file_extension not in ["json", "jsonl"]):
-           raise ValueError("The input file must be in JSON format (.json or jsonl)")
+           raise ValueError("The input file must be in JSON format (.json or .jsonl)")
         if(file_extension=="jsonl"):
            df = pl.read_ndjson(path)
         else:    
