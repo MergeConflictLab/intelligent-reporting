@@ -143,4 +143,4 @@ main.py
 schema/
 test/
 DB_schema/
-user_requirements.txtgit reset --soft HEAD~1
+user_requirements.txt
