@@ -3,7 +3,7 @@ from datetime import datetime
 import os
 import json
 
-class SchemaInferer():
+class SchemaInfererFlatFiles():
     """This class should be responsible of infering the pl.DataFrame object's schema, apply it and generate the schema report."""
 
     def __init__(self):
@@ -19,6 +19,14 @@ class SchemaInferer():
         total = len(s)
         if total == 0:
            return "No data"
+        def is_integer_dtype(dtype) -> bool:
+            return dtype in [pl.Int8, pl.Int16, pl.Int32, pl.Int64]
+
+        def is_float_dtype(dtype) -> bool:
+            return dtype in [pl.Float32, pl.Float64]
+        
+        def is_numeric_dtype(dtype) -> bool:
+            return is_integer_dtype(dtype) or is_float_dtype(dtype)
       
         # boolean detection
         def is_boolean_column(s: pl.Series) -> pl.Series:
@@ -56,14 +64,8 @@ class SchemaInferer():
             unique_ratio = s.n_unique() / len(s)
             return unique_ratio
         category_ratio = category_ratio_calc(s)
-
-
-        # int
-        def is_integer_dtype(dtype) -> bool:
-            return dtype in [pl.Int8, pl.Int16, pl.Int32, pl.Int64]
+                
         
-        def is_float_dtype(dtype) -> bool:
-            return dtype in [pl.Float32, pl.Float64]
         
         def int_mask_calc(s: pl.Series) -> pl.Series:
             """
@@ -83,8 +85,7 @@ class SchemaInferer():
 
         # float
         
-        def is_numeric_dtype(dtype) -> bool:
-            return is_integer_dtype(dtype) or is_float_dtype(dtype)
+        
         
         def float_mask_calc(s: pl.Series, int_mask: pl.Series) -> pl.Series:
             """
@@ -117,13 +118,17 @@ class SchemaInferer():
                 "%m/%d/%Y",
             ]
 
+            if s.dtype != pl.Utf8:
+                return pl.Series(s.name, [None] * len(s), dtype=pl.Datetime)
+
+            # Try formats
             for fmt in COMMON_DATETIME_FORMATS:
                 dt = s.str.strptime(pl.Datetime, format=fmt, strict=False)
-                # if at least one value parsed, return result (or continue to refine)
                 if dt.null_count() < len(s):
                     return dt
-            # fallback: cast with strict=False to get nulls for unparsed
-            return s.cast(pl.Datetime, strict=False)
+
+            # All formats failed
+            return pl.Series(s.name, [None] * len(s), dtype=pl.Datetime)
 
         # datetime detection
         datetime_cast = parse_datetime_generic(s)
@@ -212,11 +217,15 @@ class SchemaInferer():
                 "true": True, "1": True, "yes": True,
                 "false": False, "0": False, "no": False
             }
-            converted = (
-                col_data.cast(pl.Utf8)
-                .str.to_lowercase()
-                .apply(lambda x: bool_map.get(x))
-            )
+
+            # Convert a Series safely
+            def series_to_boolean(col: pl.Series) -> pl.Series:
+                # Ensure it's string and lowercase
+                s = col.cast(pl.Utf8).str.to_lowercase()
+
+                # Map values using list comprehension (works in any version)
+                return pl.Series([bool_map.get(v, None) for v in s])
+            converted = series_to_boolean(col_data)
 
         else:  # String or any unhandled
             converted = col_data.clone()
@@ -338,7 +347,7 @@ class SchemaInferer():
             return list(obj)
         return str(obj)
     
-    def dump_schema(self, schema: dict, schema_dir: str):
+    def dump_schema(self, *, schema: dict, schema_dir: str):
         """
         Dump the inferred schema to a JSON file.
         The output file will be named schema-yyyy-mm-dd hh-mm-ss.json inside schema_dir.
