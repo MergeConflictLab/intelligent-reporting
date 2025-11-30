@@ -1,11 +1,10 @@
 import polars as pl
 from pathlib import Path
+import time
 
 OUTPUT_PATH="./output/"
-CHUNK_SIZE=100000
+CHUNK_SIZE=1000
 def csvSplitToChunks(path):
-    global CHUNK_SIZE
-    global OUTPUT_PATH
     scan = pl.scan_csv(path)
     total_rows = scan.select(pl.len()).collect().item()
     offset = 0
@@ -14,10 +13,8 @@ def csvSplitToChunks(path):
         df.write_csv(f"{OUTPUT_PATH}csv/file{offset+CHUNK_SIZE}.csv")
         offset += CHUNK_SIZE
 
-# 1GB of data chunk split in 1 minute still slow and need optimisation
+# Format accepted [{}, {}, ..., {}]                
 def jsonSPlitToChunks(path):
-    global CHUNK_SIZE
-    global OUTPUT_PATH
     content_value=[]
     counter=-1
     content_values=[]
@@ -59,7 +56,10 @@ def jsonSPlitToChunks(path):
                          offset+=CHUNK_SIZE
                       index_i=index_j+1
             if(index_j-index_i>1):
-               content_value.append(chunk[index_i:index_j])
+               if(index_i==0 and index_j>=len(chunk)):
+                  content_value.append(chunk)
+               else:   
+                  content_value.append(chunk[index_i:index_j])
         if(len(content_values)!=0):
            folder_path=f"{OUTPUT_PATH}json/"
            file_path=f"file{offset+CHUNK_SIZE}.json"
@@ -73,17 +73,28 @@ def jsonSPlitToChunks(path):
                     else:
                        out.write(obj + "\n,")
               out.write("]")    
-           content_values=[]     
+           content_values=[] 
 
+def jsonlSpliteToChunks(path):
+   scan = pl.scan_ndjson(path)
+   total_rows = scan.select(pl.len()).collect().item()   
+   offset=0
+   while offset < total_rows:
+      df = scan.slice(offset, CHUNK_SIZE).collect()
+      folder_path=f"{OUTPUT_PATH}jsonl/"
+      file_path=f"file{offset+CHUNK_SIZE}.jsonl"
+      df.write_ndjson(folder_path+file_path)
+      offset+=CHUNK_SIZE
 folder = Path("./data")
 
-for file in folder.iterdir():
+for file in folder.iterdir():  
     if file.is_file():
        file_extension = file.suffix.lower()
        if(file_extension==".csv"):
-          csvSplitToChunks(file)
+         csvSplitToChunks(file)
        elif(file_extension==".json"):
          jsonSPlitToChunks(file)
+       elif(file_extension==".jsonl"):
+         jsonlSpliteToChunks(file)  
        elif(file_extension==".xml"):
-          pass
-    
+          pass  
