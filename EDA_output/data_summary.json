@@ -1,0 +1,129 @@
+{
+    "num_rows": 220,
+    "num_columns": 13,
+    "duplicated_rows": 0,
+    "missing_values": {
+        "salad_title": 0,
+        "prep_time": 0,
+        "n_star": 0,
+        "n_review": 0,
+        "Calories": 0,
+        "Total Fat": 220,
+        "Saturated Fat": 220,
+        "Carbohydrates": 0,
+        "Dietary Fiber": 220,
+        "Sugar": 220,
+        "Protein": 220,
+        "Cholesterol": 0,
+        "Sodium": 0
+    },
+    "outliers_per_column": {
+        "prep_time": 16,
+        "n_review": 13,
+        "Calories": 5,
+        "Total Fat": 0,
+        "Saturated Fat": 0,
+        "Dietary Fiber": 0,
+        "Sugar": 0,
+        "Protein": 0
+    },
+    "outlier_plot_path": "figures/outliers_per_column.png",
+    "statistical_summary": {
+        "prep_time": {
+            "count": 220.0,
+            "null_count": 0.0,
+            "mean": 46.372727272727275,
+            "std": 55.58133767327708,
+            "min": 5.0,
+            "25%": 20.0,
+            "50%": 30.0,
+            "75%": 50.0,
+            "max": 490.0
+        },
+        "n_review": {
+            "count": 220.0,
+            "null_count": 0.0,
+            "mean": 86.06363636363636,
+            "std": 66.32337787288813,
+            "min": 16.0,
+            "25%": 43.0,
+            "50%": 70.0,
+            "75%": 104.0,
+            "max": 458.0
+        },
+        "Calories": {
+            "count": 220.0,
+            "null_count": 0.0,
+            "mean": 404.75454545454545,
+            "std": 265.29469050528456,
+            "min": 0.0,
+            "25%": 249.0,
+            "50%": 349.0,
+            "75%": 540.0,
+            "max": 1759.0
+        },
+        "Total Fat": {
+            "count": 0.0,
+            "null_count": 220.0,
+            "mean": null,
+            "std": null,
+            "min": null,
+            "25%": null,
+            "50%": null,
+            "75%": null,
+            "max": null
+        },
+        "Saturated Fat": {
+            "count": 0.0,
+            "null_count": 220.0,
+            "mean": null,
+            "std": null,
+            "min": null,
+            "25%": null,
+            "50%": null,
+            "75%": null,
+            "max": null
+        },
+        "Dietary Fiber": {
+            "count": 0.0,
+            "null_count": 220.0,
+            "mean": null,
+            "std": null,
+            "min": null,
+            "25%": null,
+            "50%": null,
+            "75%": null,
+            "max": null
+        },
+        "Sugar": {
+            "count": 0.0,
+            "null_count": 220.0,
+            "mean": null,
+            "std": null,
+            "min": null,
+            "25%": null,
+            "50%": null,
+            "75%": null,
+            "max": null
+        },
+        "Protein": {
+            "count": 0.0,
+            "null_count": 220.0,
+            "mean": null,
+            "std": null,
+            "min": null,
+            "25%": null,
+            "50%": null,
+            "75%": null,
+            "max": null
+        }
+    },
+    "most_extreme_column_plot_path": "figures/most_extreme_column.png",
+    "constant_columns": {
+        "Total Fat": 1.0,
+        "Saturated Fat": 1.0,
+        "Dietary Fiber": 1.0,
+        "Sugar": 1.0,
+        "Protein": 1.0
+    }
+}

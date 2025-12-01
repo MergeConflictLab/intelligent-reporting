@@ -1,4 +1,5 @@
 from loading import *
+from profiling import *
 from custom_typing import *
 import time
 
@@ -74,16 +75,29 @@ class pipeline:
             inferer = infererClass()
             
             df = loader.load(file_path=file)
-
             # schema inference
             df, schema = inferer.infer_schema(df)
             inferer.dump_schema(schema=schema, schema_dir="./schema")
+        
+        #profiling
+
+
+        # sampling
+        sampler = DataSampler(df=df, max_rows=3, output_path = "EDA_output/sample.json")
+        summarizer = DataSummarizer(df=df, output_dir="EDA_output", figures_dir='figures')
+
+        sampler.run_sample()
+        summarizer.summary()
+
+
 
 
 start = time.perf_counter()
 pip = pipeline()
-pip.run(db_url="snowflake://NAOUARELB:Naouar2002ensah$@bxbmyrn-yy31127/INSURANCE_CSV/public?warehouse=COMPUTE_WH&role=ACCOUNTADMIN",db_table="insurance_table")
+pip.run(file='intelligent_reporting/data/cleaned_salad_data.csv')
+
 latency = time.perf_counter() - start
+
 print(f"Latency: {latency:.6f} seconds")
 
 # snowflake://NAOUARELB:Naouar2002ensah$@bxbmyrn-yy31127/INSURANCE_CSV/public?warehouse=COMPUTE_WH&role=ACCOUNTADMIN
