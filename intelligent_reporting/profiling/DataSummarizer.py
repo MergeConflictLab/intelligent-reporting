@@ -10,7 +10,26 @@ sns.set_palette("Set2")
 
 class DataSummarizer:
     def __init__(self, *, df: pl.DataFrame, output_dir="EDA_output", figures_dir=None, verbose=False):
+    # ------------------- Safe numeric conversion -------------------
+    # Convert empty strings to nulls in string columns
+        string_cols = [col for col, dt in zip(df.columns, df.dtypes) if dt == pl.Utf8]
+        df = df.with_columns([
+        pl.when(pl.col(col) == "").then(None).otherwise(pl.col(col)).alias(col)
+        for col in string_cols
+        ])
+
+
+            # Attempt to convert columns to numeric where possible
+        numeric_cols = []
+        for col in df.columns:
+            try:
+                df = df.with_columns(pl.col(col).cast(pl.Float64, strict=False).alias(col))
+                numeric_cols.append(col)
+            except:
+                continue
+
         self.df = df
+        self.numeric_cols = numeric_cols
         self.output_dir = output_dir
         self.figures_dir = figures_dir or os.path.join(output_dir, "figures")
         self.verbose = verbose
@@ -20,7 +39,6 @@ class DataSummarizer:
 
     # ------------------- SUMMARY -------------------
     def summary(self, analyze_outliers=True, analyze_skew=True, detect_constants=True):
-        """Orchestrates the full EDA summary workflow and returns a summary dict."""
         n_rows, n_cols = self.df.shape
         if self.verbose:
             print(f"Data has {n_rows} rows and {n_cols} columns.")
@@ -35,15 +53,14 @@ class DataSummarizer:
         summary_info["missing_values"] = {col: int(self.df[col].null_count()) for col in self.df.columns}
 
         # Outlier analysis
-        if analyze_outliers:
+        if analyze_outliers and self.numeric_cols:
             outliers = self.detect_outliers()
             summary_info["outliers_per_column"] = outliers
             summary_info["outlier_plot_path"] = self.plot_outliers(outliers)
 
         # Numeric column statistics
-        numeric_cols = [col for col, dt in zip(self.df.columns, self.df.dtypes) if dt in [pl.Int64, pl.Float64]]
-        if numeric_cols and analyze_skew:
-            numeric_df = self.df.select(numeric_cols)
+        if analyze_skew and self.numeric_cols:
+            numeric_df = self.df.select(self.numeric_cols)
             summary_info["statistical_summary"] = self.describe_numeric(numeric_df)
             summary_info["most_extreme_column_plot_path"] = self.plot_most_extreme_column(numeric_df)
 
@@ -62,29 +79,18 @@ class DataSummarizer:
 
     # ------------------- OUTLIERS -------------------
     def detect_outliers(self):
-        numeric_cols = [col for col, dt in zip(self.df.columns, self.df.dtypes) if dt in [pl.Int64, pl.Float64]]
         outlier_counts = {}
-        
-        for col in numeric_cols:
-            # Skip column if all values are null
-            if self.df[col].null_count() == self.df.height:
+        for col in self.numeric_cols:
+            series = self.df[col]
+            if series.null_count() == series.len():
                 outlier_counts[col] = 0
                 continue
-
-            # Compute Q1 and Q3 with interpolation
-            q1 = self.df[col].quantile(0.25, interpolation="nearest")
-            q3 = self.df[col].quantile(0.75, interpolation="nearest")
-            if q1 is None or q3 is None:  # fallback
-                outlier_counts[col] = 0
-                continue
-
+            q1 = series.quantile(0.25, interpolation="nearest")
+            q3 = series.quantile(0.75, interpolation="nearest")
             iqr = q3 - q1
             lower, upper = q1 - 1.5 * iqr, q3 + 1.5 * iqr
-            outlier_counts[col] = int(((self.df[col] < lower) | (self.df[col] > upper)).sum())
-        
+            outlier_counts[col] = int(((series < lower) | (series > upper)).sum())
         return outlier_counts
-
-
 
     def plot_outliers(self, outlier_counts):
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -96,7 +102,7 @@ class DataSummarizer:
         ax.set_ylabel("Outlier Count", fontsize=12)
         plt.xticks(rotation=45, ha="right")
         for i, count in enumerate(counts):
-            ax.text(i, count + max(counts) * 0.01, str(count), ha='center', va='bottom', fontsize=10)
+            ax.text(i, count + max(counts)*0.01, str(count), ha='center', va='bottom', fontsize=10)
         plt.tight_layout()
         path = os.path.join(self.figures_dir, "outliers_per_column.png")
         plt.savefig(path, dpi=300, bbox_inches='tight')
@@ -107,30 +113,25 @@ class DataSummarizer:
 
     # ------------------- STATISTICS -------------------
     def describe_numeric(self, numeric_df: pl.DataFrame):
-        """Return descriptive statistics for numeric columns in a dict format."""
         desc = numeric_df.describe()
         summary_dict = {}
-
-        # Polars describe gives rows: ['mean', 'std', 'min', 'max', 'median']
-        # Convert each column to dict
         for col in numeric_df.columns:
             col_stats = {}
             for row in desc.rows():
-                stat_name = row[0]  # first column of desc is the statistic name
+                stat_name = row[0]
                 stat_value = row[desc.columns.index(col)]
                 col_stats[stat_name] = float(stat_value) if stat_value is not None else None
             summary_dict[col] = col_stats
-
         return summary_dict
 
-
     def plot_most_extreme_column(self, numeric_df: pl.DataFrame):
-        """Plot histogram and boxplot for column with highest skew*kurtosis."""
         skew_kurt = {}
         for col in numeric_df.columns:
-            skew = numeric_df[col].skew()
-            kurt = numeric_df[col].kurtosis()
-            # Handle None values safely
+            series = numeric_df[col].drop_nulls()
+            if series.is_empty():
+                continue
+            skew = series.skew()
+            kurt = series.kurtosis()
             skew_val = abs(skew) if skew is not None else 0
             kurt_val = abs(kurt) if kurt is not None else 0
             skew_kurt[col] = skew_val * kurt_val
@@ -140,12 +141,12 @@ class DataSummarizer:
             return None
 
         extreme_col = max(skew_kurt, key=skew_kurt.get)
-        data = numeric_df[extreme_col].to_numpy()
-        
+        data = numeric_df[extreme_col].drop_nulls().to_numpy()
+
         log_scale = False
-        skew = numeric_df[extreme_col].skew() or 0
-        kurt = numeric_df[extreme_col].kurtosis() or 0
-        if abs(skew) > 1 or abs(kurt) > 5:
+        skew_val = numeric_df[extreme_col].drop_nulls().skew() or 0
+        kurt_val = numeric_df[extreme_col].drop_nulls().kurtosis() or 0
+        if abs(skew_val) > 1 or abs(kurt_val) > 5:
             data = np.log1p(data)
             log_scale = True
 
@@ -159,22 +160,19 @@ class DataSummarizer:
         path = os.path.join(self.figures_dir, "most_extreme_column.png")
         plt.savefig(path, dpi=300, bbox_inches='tight')
         plt.close(fig)
-        print(f"Most extreme numeric column plot saved to: {path}")
+        if self.verbose:
+            print(f"Most extreme numeric column plot saved to: {path}")
         return path
-
 
     # ------------------- CONSTANT COLUMNS -------------------
     def detect_constants(self):
         constant_cols = {}
         for col in self.df.columns:
             vc = self.df[col].value_counts()
-            counts_col = vc.columns[1]  # always the second column is the counts
+            counts_col = vc.columns[1]  # second column is counts
             counts = vc[counts_col]
             top_freq = counts.max() / self.df.height
             if top_freq >= 0.8:
                 constant_cols[col] = round(float(top_freq), 2)
         return constant_cols if constant_cols else "No constant column"
-
-
-
 
