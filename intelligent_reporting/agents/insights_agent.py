@@ -61,3 +61,4 @@ def insights_query(img, summary_data, sample_data, description):
 
     except Exception as e:
         raise e
+    
