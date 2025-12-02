@@ -1,9 +1,10 @@
 import polars as pl
 from pathlib import Path
+import xml.etree.ElementTree as ET
 import time
 
 OUTPUT_PATH="./output/"
-CHUNK_SIZE=1000
+CHUNK_SIZE=100
 def csvSplitToChunks(path):
     scan = pl.scan_csv(path)
     total_rows = scan.select(pl.len()).collect().item()
@@ -75,7 +76,7 @@ def jsonSPlitToChunks(path):
               out.write("]")    
            content_values=[] 
 
-def jsonlSpliteToChunks(path):
+def jsonlSplitToChunks(path):
    scan = pl.scan_ndjson(path)
    total_rows = scan.select(pl.len()).collect().item()   
    offset=0
@@ -85,9 +86,70 @@ def jsonlSpliteToChunks(path):
       file_path=f"file{offset+CHUNK_SIZE}.jsonl"
       df.write_ndjson(folder_path+file_path)
       offset+=CHUNK_SIZE
+
+def xmlFindRootObject(path):
+   result = []
+   counter = 0
+   with open(path, "r") as f:
+      chunk = f.read(10000)
+      index1 = chunk.find("<")
+      if(index1==-1): 
+         return [None, None]
+      index2 = chunk.find(">")
+      fatherRoot = chunk[index1:index2+1]
+      index1 = chunk.find("<", index2+1)
+      index2 = chunk.find(">", index2+1)
+      sonRoot = chunk[index1:index2+1] 
+      return [fatherRoot, sonRoot]
+
+def xmlSplitToChunks(path):
+    content_values = []
+    result = xmlFindRootObject(path)
+    if(result[0] is None):
+       raise ValueError("The file is empty")
+    begin = result[1]
+    end = result[1][0]+"/"+result[1][1:]
+    offset = 0
+    with open(path, "r") as f:
+       while True:
+          chunk = f.read(1_000_000)
+          if not chunk:   # end of file
+                break
+          index1=0
+          index2=0
+          while(True):
+            index1=chunk.find(begin, index1)
+            if(index1==-1):
+               break
+            index2=chunk.find(end, index1+1)
+            if(index2==-1):
+                  break
+            content_values.append(chunk[index1:index2]+end+"\n")
+            if(len(content_values)>=CHUNK_SIZE):
+               folder_path=f"{OUTPUT_PATH}xml/"
+               file_path=f"file{offset+CHUNK_SIZE}.xml"
+               with open(folder_path+file_path, 'w') as out:
+                  out.write(result[0]+"\n")
+                  for content_value in content_values:
+                      out.write(content_value)
+                  out.write(result[0][0]+"/"+result[0][1:]+"\n")  
+               content_values = []     
+               offset+=CHUNK_SIZE
+            index1=index2+len(end)
+
+       if(len(content_values)!=0):
+         folder_path=f"{OUTPUT_PATH}xml/"
+         file_path=f"file{offset+CHUNK_SIZE}.xml"
+         with open(folder_path+file_path, 'w') as out:
+            out.write(result[0]+"\n")
+            for content_value in content_values:
+                out.write(content_value)
+            out.write(result[0][0]+"/"+result[0][1:]+"\n")          
+
 folder = Path("./data")
 
 for file in folder.iterdir():  
+    start = time.time()
     if file.is_file():
        file_extension = file.suffix.lower()
        if(file_extension==".csv"):
@@ -95,6 +157,8 @@ for file in folder.iterdir():
        elif(file_extension==".json"):
          jsonSPlitToChunks(file)
        elif(file_extension==".jsonl"):
-         jsonlSpliteToChunks(file)  
+         jsonlSplitToChunks(file)  
        elif(file_extension==".xml"):
-          pass  
+          xmlSplitToChunks(file)
+    end = time.time()
+    print("Execution time : ", end - start, " seconds")   
