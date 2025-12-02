@@ -115,3 +115,33 @@ A dynamic AI platform capable of:
 - Generating intelligent visualizations,
 - Synthesizing insights into narrative reports, and
 - Delivering consistent, interpretable analytics with minimal manual effort.
+
+## Setup
+This project uses Python tooling, Docker-based sandboxing, and cloud LLM models. Follow these steps to prepare the environment.
+### 1. Install Python Dependencies
+```bash
+python3 -m venv .venv
+source .venv/bin/activate    # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+### 2.Initialize LLM providers 
+The system uses cloud-hosted LLMs that must be “activated” by sending a first message:
+
+- qwen3-vl:235b-cloud
+
+- deepseek-v3.1:671b-cloud
+
+Log into your LLM platform (Ollama Cloud, Foundry, etc.) and send a short message (e.g., “hello”) to each model to ensure they respond.
+
+### 3. Build and Run the Execution Sandbox
+The sandbox is where plot generating code runs safely. Ensure Docker is running.
+
+From the project root:
+```bash
+cd sandbox
+docker build -t intelligent-reporting-sandbox -f dockerfile.sandbox .
+docker run -d --name reporting-sandbox intelligent-reporting-sandbox
+```
+Generated files appear in: 
+sandbox/output/   # visualizations, tables, PDFs
+sandbox/code/     # agent-generated Python code

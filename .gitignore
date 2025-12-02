@@ -137,9 +137,9 @@ results/
 *.csv
 *.xlsx
 *.xls
-
-#
 main.py
+script.py
+code/
 schema/
 test/
 DB_schema/
@@ -152,4 +152,3 @@ results/
 *.xls
 *.json
 generated_tasks.ipynb
-code/
