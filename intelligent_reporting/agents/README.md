@@ -1,76 +1,98 @@
 # Agents
 
-This folder contains the core agent modules for the Intelligent Reporting system. Each agent has a specific responsibility, from metadata extraction to high-level orchestration. They are designed to be modular, testable, and composable.
+This folder contains the core agent modules for the Intelligent Reporting system. Each agent is a focused, testable component used to analyze data or orchestrate analysis workflows. Typical responsibilities include metadata extraction, plan generation, code generation, and insight summarization.
 
-## 1. Metadata Agent (`metadata_agent.py`)
+## Files in this folder
 
-**Role:** Analyzes the structure of the dataset.
+- `metadata_agent.py` — Extracts structural metadata from datasets.
+- `supervisor_agent.py` — Creates an analysis plan from metadata and samples.
+- `assistant_agent.py` — Generates executable code for a specific analysis task.
+- `insights_agent.py` — Produces textual insights from charts and summaries.
 
-**Key Function:** `metadata_query(model, sample_data, schema, description)`
+## Brief agent summaries
 
-**Inputs:**
-- `model`: Name of the LLM to use.
-- `sample_data`: A list of dictionaries representing sample rows.
-- `schema`: Dictionary mapping column names to data types.
-- `description`: A list of column descriptions/details.
+## Metadata Agent (`metadata_agent.py`)
 
-**Outputs:**
-- A JSON string containing:
-    - `table_description`: A summary of the table.
-    - `columns`: A list of objects with `name` and `description` for each column.
+**Role**: Analyze dataset structure and produce a machine-readable description.
 
-## 2. Supervisor Agent (`supervisor_agent.py`)
+**Key function**: `metadata_query(model, sample_data, schema, description)`
 
-**Role:** The strategist. It analyzes the metadata and data samples to formulate an analysis plan.
+**Inputs**:
 
-**Key Function:** `supervisor_query(model, sample_data, description)`
+- `model`: LLM identifier used for any text-generation steps.
+- `sample_data`: `List[dict]`, a small sample of rows.
+- `schema`: `dict` mapping column names to inferred types.
+- `description`: Optional human-provided column descriptions.
 
-**Inputs:**
-- `model`: Name of the LLM.
-- `sample_data`: Sample rows from the dataset.
-- `description`: Metadata description of the dataset (output from Metadata Agent).
+**Outputs**:
 
-**Outputs:**
-- A JSON string defining the plan:
-    - `libraries`: List of Python libraries to use.
-    - `tasks`: A list of analysis tasks, where each task has:
-        - `name`: Short title.
-        - `description`: Goal of the analysis.
-        - `columns`: Columns involved.
-        - `plot_type`: Recommended visualization type.
-        - `preprocessing`: Necessary data cleaning steps.
-        - `code_template`: Pseudo-code guide for the Assistant Agent.
+- `dict` containing:
+  - `table_description`: short natural-language summary.
+  - `columns`: list of `{name, description}` entries.
 
-## 3. Assistant Agent (`assistant_agent.py`)
+## Supervisor Agent (`supervisor_agent.py`)
 
-**Role:** The coder. It takes a specific task from the Supervisor's plan and generates executable Python code.
+**Role**: Produce a prioritized analysis plan from metadata and data samples.
 
-**Key Function:** `assistant_query(supervisor_response, path, model="mistral")`
+**Key function**: `supervisor_query(model, sample_data, description)`
 
-**Inputs:**
-- `supervisor_response`: The specific task object from the Supervisor's plan.
-- `path`: Path to the dataset file.
-- `model`: Name of the LLM (default: "mistral").
+**Inputs**:
 
-**Outputs:**
-- A dictionary:
-    - `name`: The task name.
-    - `code`: The executable Python code to perform the analysis and save the plot.
+- `model`: LLM name.
+- `sample_data`: small list of rows.
+- `description`: metadata output from the Metadata Agent.
 
-## 4. Insights Agent (`insights_agent.py`)
+**Outputs**:
 
-**Role:** The analyst. It looks at the generated charts and data summaries to produce textual insights.
+- `dict` describing the plan, typically including:
+  - `libraries`: list of Python libraries to use (e.g., `pandas`, `polars`).
+  - `tasks`: list of task objects; each task commonly contains:
+    - `name`: short task title.
+    - `description`: intent or hypothesis to evaluate.
+    - `columns`: columns involved.
+    - `plot_type`: suggested visualization type.
+    - `preprocessing`: brief cleaning steps required.
+    - `code_template`: pseudo-code or template the Assistant can expand.
 
-**Key Function:** `insights_query(img, summary_data, sample_data, description)`
+## Assistant Agent (`assistant_agent.py`)
 
-**Inputs:**
-- `img`: Base64 encoded string of the generated plot image.
-- `summary_data`: Statistical summary of the data (e.g., `df.describe()`).
-- `sample_data`: Sample rows.
-- `description`: High-level description of the analysis task.
+**Role**: Turn a single Supervisor task into executable Python code.
 
-**Outputs:**
-- A JSON array of insight objects:
-    - `insight`: The key finding.
-    - `reasoning`: Why this is important.
-    - `evidence`: Data points or visual features supporting the finding.
+**Key function**: `assistant_query(supervisor_response, path, model="mistral")`
+
+**Inputs**:
+
+- `supervisor_response`: one task object from the Supervisor plan.
+- `path`: path to dataset file to run against.
+- `model`: LLM identifier (default: `mistral`).
+
+**Outputs**:
+
+- `dict` with keys such as:
+  - `name`: task name.
+  - `code`: executable Python code (string) that performs the analysis and
+    writes any plot files or outputs.
+
+## Insights Agent (`insights_agent.py`)
+
+**Role**: Produce human-readable insights from generated plots and summaries.
+
+**Key function**: `insights_query(img, summary_data, sample_data, description)`
+
+**Inputs**:
+
+- `img`: base64 or path to plot image.
+- `summary_data`: statistical summaries (e.g., result of `df.describe()`).
+- `sample_data`: small sample rows used for context.
+- `description`: high-level description of the analysis performed.
+
+**Outputs**:
+
+- `list` of insight objects with fields like:
+  - `insight`: brief finding.
+  - `reasoning`: explanation why the finding matters.
+  - `evidence`: supporting data points or visual cues.
+
+## Notes & development
+
+Agent responsibilities differ depending on the reporting mode. Automated EDA uses only the Metadata Agent and Insights Agent to generate a fully automated exploratory report. The Fully AI Reporting mode uses the entire agent stack — Metadata, Supervisor, Assistant, and Insights Agents — to produce an end-to-end analysis with planning, code generation, execution, visualization, and insight generation.

@@ -10,23 +10,19 @@ def run_in_docker_sandbox(
     code: str,
     data_dir="data",
     image="llm-sandbox",
-    name: str | None = None,  # NEW: optional descriptive name
+    name: str | None = None,
 ):
     """
     Run a given code snippet inside a Docker sandbox with restricted resources.
     The code is saved to a uniquely named file and executed within the container.
     All output files are prefixed with a unique task ID for easy identification.
     """
-    # --- Generate descriptive task_id ---
     if name:
-        # sanitize: remove weird characters, compact spaces, keep things file-safe
         safe = re.sub(r"[^a-zA-Z0-9_\-]+", "_", name).strip("_")
         base = safe[:40] if safe else "task"
     else:
-        # fallback to hash derived from the code
         base = hashlib.sha1(code.encode("utf-8")).hexdigest()[:12]
 
-    # still ensure uniqueness by appending 4-char suffix
     suffix = uuid.uuid4().hex[:4]
     task_id = f"{base}_{suffix}"
 
