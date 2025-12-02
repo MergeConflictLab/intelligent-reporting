@@ -147,7 +147,7 @@ class SchemaInfererFlatFiles():
             "float": float(float_ratio),
             "datetime": float(datetime_ratio),
             "boolean": float(bool_ratio),
-            "categorical": float(category_ratio),
+            "category": 1 - float(category_ratio),
             "string": float(string_ratio)
         }
 
@@ -161,24 +161,24 @@ class SchemaInfererFlatFiles():
                 "float": ...,
                 "datetime": ...,
                 "boolean": ...,
-                "categorical": ...,
+                "categoricy": ...,
                 "string": ...
             }
         Return:
             the infered type and the confidence
         """
         # Define thresholds
-        THRESH_BOOLEAN = 0.95
-        THRESH_CATEGORY = 0.2
+        THRESH_BOOLEAN = 0.98
+        THRESH_CATEGORY = 0.95
         THRESH_INT = 0.9
         THRESH_FLOAT = 0.9
-        THRESH_DATETIME = 0.8
-        THRESH_STRING = 0.0
+        THRESH_DATETIME = 0.7
 
         # Priority order: bool -> category -> int -> float -> datetime -> string -> object
-        if ratios["boolean"] >= THRESH_BOOLEAN:
-            return "Boolean", ratios["boolean"]
         
+        if ratios["boolean"] >= THRESH_BOOLEAN:
+            return "Boolean", ratios["boolean"] / (ratios["boolean"] + ratios["string"])
+
         if ratios["int"] >= THRESH_INT:
             return "Int", ratios["int"]
 
@@ -186,21 +186,20 @@ class SchemaInfererFlatFiles():
             return "Float", ratios["float"]
 
         if ratios["datetime"] >= THRESH_DATETIME:
-            return "Datetime", ratios["datetime"]
+            return "Datetime", ratios["datetime"] / (ratios["datetime"] + ratios["string"])
 
-        if ratios["categorical"] <= THRESH_CATEGORY:
-            return "Category", ratios["categorical"]
+        # category based on unique-ratio (separately computed)
+        if ratios["category"] >= THRESH_CATEGORY:
+            return "Category", ratios["category"] / (ratios["category"] + ratios["string"])
+
         # fallback
-        elif ratios["string"] > THRESH_STRING:
-            return "String", ratios["string"]
-
-        return "unknown", max(ratios.values())
+        return "String", ratios["string"]
 
 
     def _convert_column(self, col_data: pl.Series, inferred_type: str):
         """Actually converts the column into the infered type, drops the invalids"""
         if inferred_type == "Int":
-            converted = col_data.cast(pl.Int64, strict=False)
+            converted = col_data.cast(pl.Float64).round(0).cast(pl.Int64)
 
         elif inferred_type == "Float":
             converted = col_data.cast(pl.Float64, strict=False)

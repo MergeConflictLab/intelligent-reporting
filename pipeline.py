@@ -1,6 +1,5 @@
-from loading import *
-from custom_typing import *
-import time
+from intelligent_reporting.loading import *
+from intelligent_reporting.custom_typing import *
 
 
 class pipeline:
@@ -10,21 +9,10 @@ class pipeline:
         "mssql", "snowflake"
     ]
 
-    # def select_loader(self, source: str):
-        # if source.endswith((".csv", ".txt", ".tsv")):
-        #     return pipeline.LOADERS["csv"]
-        # elif source.endswith(".json"):
-        #     return pipeline.LOADERS["json"]
-        # elif source.endswith((".parquet", ".pq")):
-        #     return pipeline.LOADERS["parquet"]
-        # elif source.endswith(".xml"):
-        #     return pipeline.LOADERS["xml"]
-        # parsed = urlparse(source)
-        # if parsed.scheme.lower() in self.DB_SCHEMES:
-        #     return pipeline.LOADERS["db"]
-        # else:
-        #     raise ValueError(f"No loader found for {source}")
     def select_loader_inferer(self, source: str):
+        """
+        Select loader based on data source
+        """
         if source.endswith((".csv", ".txt", ".tsv")):
             return CSVLoader, SchemaInfererFlatFiles
         elif source.endswith(".json"):
@@ -80,10 +68,4 @@ class pipeline:
             inferer.dump_schema(schema=schema, schema_dir="./schema")
 
 
-start = time.perf_counter()
-pip = pipeline()
-pip.run(db_url="snowflake://NAOUARELB:Naouar2002ensah$@bxbmyrn-yy31127/INSURANCE_CSV/public?warehouse=COMPUTE_WH&role=ACCOUNTADMIN",db_table="insurance_table")
-latency = time.perf_counter() - start
-print(f"Latency: {latency:.6f} seconds")
 
-# snowflake://NAOUARELB:Naouar2002ensah$@bxbmyrn-yy31127/INSURANCE_CSV/public?warehouse=COMPUTE_WH&role=ACCOUNTADMIN
