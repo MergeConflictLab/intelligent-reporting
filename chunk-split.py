@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 import time
 
 OUTPUT_PATH="./output/"
-CHUNK_SIZE=100
+CHUNK_SIZE=100000
 def csvSplitToChunks(path):
     scan = pl.scan_csv(path)
     total_rows = scan.select(pl.len()).collect().item()
@@ -146,6 +146,17 @@ def xmlSplitToChunks(path):
                 out.write(content_value)
             out.write(result[0][0]+"/"+result[0][1:]+"\n")          
 
+def parquetSplitToChunks(path):
+   scan = pl.scan_parquet(path)
+   total_rows = scan.select(pl.len()).collect().item()
+   offset = 0
+   while offset < total_rows:
+      df = scan.slice(offset, CHUNK_SIZE).collect()
+      folder_path=f"{OUTPUT_PATH}parquet/"
+      file_path=f"file{offset+CHUNK_SIZE}.parquet"
+      df.write_parquet(folder_path+file_path)
+      offset+=CHUNK_SIZE
+      
 folder = Path("./data")
 
 for file in folder.iterdir():  
@@ -160,5 +171,9 @@ for file in folder.iterdir():
          jsonlSplitToChunks(file)  
        elif(file_extension==".xml"):
           xmlSplitToChunks(file)
+       elif(file_extension==".parquet"):
+          parquetSplitToChunks(file)
+       else:
+          print(f"{file_extension} extension not supported")      
     end = time.time()
     print("Execution time : ", end - start, " seconds")   
