@@ -5,6 +5,7 @@
 This system uses Large Language Models (LLMs) and multi-agent orchestration to automatically transform raw datasets into structured, interpretable reports. It combines metadata analysis, visualization generation, and natural-language summarization to deliver daily or weekly data insights with minimal human intervention.
 
 ## System Architecture
+
 ### Data Layer
 - Handles all data ingestion, validation, and profiling.
 - Inputs: CSV, Parquet, SQL, or API-based sources.

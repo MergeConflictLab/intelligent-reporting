@@ -96,7 +96,7 @@ class pipeline:
         
         #profiling & profiling
 
-        sampler = DataSampler(df=df, max_rows=3, output_path = "EDA_output/sample.json")
+        sampler = DataSampler(df=df, max_rows=4, output_path = "EDA_output/sample.json")
         summarizer = DataSummarizer(df=df, output_dir="EDA_output", figures_dir='figures')
         visualizer = DataVisualizer(df=df, output_dir="EDA_output", figures_dir="figures",top_k_categories=5)
         correlater = DataCorrelater(df=df, result_dir="EDA_output")
