@@ -2,6 +2,7 @@ import polars as pl
 import os
 from math import floor
 import warnings
+import json
 
 warnings.filterwarnings("ignore")
 
@@ -79,15 +80,27 @@ class DataSampler:
         n = min(self.max_rows, self.df.height)
         return self.df.sample(n=n, seed=42)
 
-    def run_sample(self) -> pl.DataFrame:
+    def run_sample(self):
         print("Selecting sampling strategy...")
 
-        for strategy in [self.no_sample, self.systematic_sample, self.stratified_sample, self.random_sample]:
+        for strategy in [
+            self.no_sample,
+            self.systematic_sample,
+            self.stratified_sample,
+            self.random_sample
+        ]:
             sample = strategy()
             if sample is not None and not sample.is_empty():
                 print(f"Final sample shape: {sample.height} rows")
-                sample.write_json(self.output_path)
-                print(f"Sample saved to: {self.output_path}")
-                return sample
+                
+                # make json serializable
+                sample_json = sample.to_dicts()
+
+                # dump JSON to file
+                with open(self.output_path, "w") as f:
+                    json.dump(sample_json, f, indent=4)
+
+                # return sample
+                return sample_json
 
         raise RuntimeError("No sampling strategy produced a valid sample.")

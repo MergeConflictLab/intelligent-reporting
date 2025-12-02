@@ -1,7 +1,17 @@
 from loading import *
 from profiling import *
+#from agents import *
+
 from custom_typing import *
 import time
+
+
+#temp
+from agents.metadata_agent import metadata_query
+from scripts.script import load_data, get_schema, describe_schema, clean_dataframe
+from agents.insights_agent import insights_query
+from scripts.utils import strip_code_fence, encode_image
+import json
 
 
 class pipeline:
@@ -78,16 +88,53 @@ class pipeline:
             # schema inference
             df, schema = inferer.infer_schema(df)
             inferer.dump_schema(schema=schema, schema_dir="./schema")
+
+            #temp
+            import polars as pl
+            df = pl.read_csv('intelligent_reporting/data/cleaned_salad_data.csv')
+            #temp
         
-        #profiling
+        #profiling & profiling
 
-
-        # sampling
         sampler = DataSampler(df=df, max_rows=3, output_path = "EDA_output/sample.json")
         summarizer = DataSummarizer(df=df, output_dir="EDA_output", figures_dir='figures')
+        visualizer = DataVisualizer(df=df, output_dir="EDA_output", figures_dir="figures",top_k_categories=5)
+        correlater = DataCorrelater(df=df, result_dir="EDA_output")
 
-        sampler.run_sample()
+
+        #temp
+        df = load_data(source='intelligent_reporting/data/cleaned_salad_data.csv')
+        df = clean_dataframe(df)
+        schema = get_schema(df)
+        description = describe_schema(df)
+        #tamp
+
+
+
+
+        sample = sampler.run_sample()
+        print(sample)
         summarizer.summary()
+        visualizer.run_viz()
+        correlater.run()
+
+        #agents
+        
+        raw_response = metadata_query(
+        #model="deepseek-v3.1:671b-cloud",
+        model = 'qwen3-vl:235b-cloud',
+
+        sample_data=sample,
+        schema=schema,
+        description=description,
+    )
+
+        response = strip_code_fence(raw_response)
+        print('response',response)
+        try:
+            metadata = json.loads(response)
+        except:
+            metadata = {"table_description": response, "columns": []}
 
 
 
