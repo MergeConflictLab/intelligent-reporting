@@ -1,17 +1,24 @@
 import polars as pl
 from pathlib import Path
-import xml.etree.ElementTree as ET
-import time
+import os
 
 OUTPUT_PATH="./output/"
-CHUNK_SIZE=100000
+CHUNK_SIZE=1000
+
+def createOutputFolders():
+   os.makedirs(f"{OUTPUT_PATH}csv/", exist_ok=True)
+   os.makedirs(f"{OUTPUT_PATH}json/", exist_ok=True)
+   os.makedirs(f"{OUTPUT_PATH}jsonl/", exist_ok=True)
+   os.makedirs(f"{OUTPUT_PATH}xml/", exist_ok=True)
+   os.makedirs(f"{OUTPUT_PATH}parquet/", exist_ok=True)
+
 def csvSplitToChunks(path):
     scan = pl.scan_csv(path)
     total_rows = scan.select(pl.len()).collect().item()
     offset = 0
     while offset < total_rows:
         df = scan.slice(offset, CHUNK_SIZE).collect()
-        df.write_csv(f"{OUTPUT_PATH}csv/file{offset+CHUNK_SIZE}.csv")
+        df.write_csv(f"{OUTPUT_PATH}csv/chunk{offset+CHUNK_SIZE}.csv")
         offset += CHUNK_SIZE
 
 # Format accepted [{}, {}, ..., {}]                
@@ -42,7 +49,7 @@ def jsonSPlitToChunks(path):
                       content_value=[]
                       if(len(content_values)>=CHUNK_SIZE):
                          folder_path=f"{OUTPUT_PATH}json/"
-                         file_path=f"file{offset+CHUNK_SIZE}.json"
+                         file_path=f"chunk{offset+CHUNK_SIZE}.json"
                          with open(folder_path+file_path, 'w') as out:
                             if(offset!=0):
                                out.write("[") 
@@ -63,7 +70,7 @@ def jsonSPlitToChunks(path):
                   content_value.append(chunk[index_i:index_j])
         if(len(content_values)!=0):
            folder_path=f"{OUTPUT_PATH}json/"
-           file_path=f"file{offset+CHUNK_SIZE}.json"
+           file_path=f"chunk{offset+CHUNK_SIZE}.json"
            with open(folder_path+file_path, 'w') as out:
               if(content_values[0][0]!='['):
                  out.write("[") 
@@ -83,7 +90,7 @@ def jsonlSplitToChunks(path):
    while offset < total_rows:
       df = scan.slice(offset, CHUNK_SIZE).collect()
       folder_path=f"{OUTPUT_PATH}jsonl/"
-      file_path=f"file{offset+CHUNK_SIZE}.jsonl"
+      file_path=f"chunk{offset+CHUNK_SIZE}.jsonl"
       df.write_ndjson(folder_path+file_path)
       offset+=CHUNK_SIZE
 
@@ -127,7 +134,7 @@ def xmlSplitToChunks(path):
             content_values.append(chunk[index1:index2]+end+"\n")
             if(len(content_values)>=CHUNK_SIZE):
                folder_path=f"{OUTPUT_PATH}xml/"
-               file_path=f"file{offset+CHUNK_SIZE}.xml"
+               file_path=f"chunk{offset+CHUNK_SIZE}.xml"
                with open(folder_path+file_path, 'w') as out:
                   out.write(result[0]+"\n")
                   for content_value in content_values:
@@ -139,7 +146,7 @@ def xmlSplitToChunks(path):
 
        if(len(content_values)!=0):
          folder_path=f"{OUTPUT_PATH}xml/"
-         file_path=f"file{offset+CHUNK_SIZE}.xml"
+         file_path=f"chunk{offset+CHUNK_SIZE}.xml"
          with open(folder_path+file_path, 'w') as out:
             out.write(result[0]+"\n")
             for content_value in content_values:
@@ -153,14 +160,15 @@ def parquetSplitToChunks(path):
    while offset < total_rows:
       df = scan.slice(offset, CHUNK_SIZE).collect()
       folder_path=f"{OUTPUT_PATH}parquet/"
-      file_path=f"file{offset+CHUNK_SIZE}.parquet"
+      file_path=f"chunk{offset+CHUNK_SIZE}.parquet"
       df.write_parquet(folder_path+file_path)
       offset+=CHUNK_SIZE
       
 folder = Path("./data")
 
+createOutputFolders()
+
 for file in folder.iterdir():  
-    start = time.time()
     if file.is_file():
        file_extension = file.suffix.lower()
        if(file_extension==".csv"):
@@ -174,6 +182,4 @@ for file in folder.iterdir():
        elif(file_extension==".parquet"):
           parquetSplitToChunks(file)
        else:
-          print(f"{file_extension} extension not supported")      
-    end = time.time()
-    print("Execution time : ", end - start, " seconds")   
+          print(f"{file_extension} extension not supported")   
