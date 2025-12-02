@@ -2,7 +2,7 @@
 
 ## Overview
 
-This system uses Large Language Models (LLMs) and multi-agent orchestration to automatically transform raw datasets into structured, interpretable reports. It combines metadata analysis, visualization generation, and natural-language summarization to deliver daily or weekly data insights with minimal human intervention.
+This system combines a automated EDA with agents to automatically transform raw datasets into structured, interpretable reports. It combines  analysis, visualization (exploratory data analysis), and natural-language summarization to deliver daily or weekly data insights with minimal human intervention.
 
 ## System Architecture
 ### Data Layer
@@ -12,33 +12,66 @@ This system uses Large Language Models (LLMs) and multi-agent orchestration to a
 - Outputs: A structured dataset and its metadata (schema, types, null counts, distributions).
 - Storage: Metadata and profiling results stored in SQLite or a lightweight local database.
 
+### Automated Exploratory Data Analysis Layer
+
+the layer uses a automated EDA that fits uses a statistical methods and techniques in order to extract hidden infos and patters in datasets, the core functionalities of the layer.
+
+### 1. Data Summary  
+Provides a complete overview of the dataset:  
+- Number of rows & columns  
+- Data types  
+- Missing values per column  
+- Descriptive statistics
+- Skewness & kurtosis  
+- Most skewed columns  
+- Unique values count  
+- Constant columns detection  
+
+
+###  2. Data Visualization  
+Automatically generates key visualizations:  
+- Histograms  
+- Boxplots  
+- Bar charts  
+- Scatter plots  
+- Outlier distribution  
+
+---
+
+### 3. Correlation Analysis  
+Includes:  
+- Correlation matrix  
+- Correlation heatmap  
+- Identification of highly correlated features  
+Useful for feature selection and reducing redundancy.
+
+
+### 4. Representative Data Sampling  
+Generates:  
+- Random sample  
+- Stratified sample (if target column provided)  
+- Configurable sample size  
+- Ensures similar distribution to the original dataset.
+
 ### Agent Layer
 
-- A collaborative AI layer composed of specialized agents that sequentially process and interpret data.
-- Metadata Agent
+- A collaborative AI layer composed of specialized agents that extract metadata and deliver insights.
+
+* metadata agent
+
   - Generates a dataset overview and column-level metadata.
   - Outputs structured JSON or Markdown describing data structure, types, and notable features.
-  - Enables downstream agents to “understand” the dataset before analysis.
 
-- Supervisor Agent (Reader)
-  - Reads metadata and dataset samples to identify patterns, anomalies, and analytical opportunities.
-  - Defines analysis goals and visualization ideas.
-  - Creates a task plan for the Assistant Agent, specifying what plots or analyses to perform.
+* Insights Agent
 
-- Assistant Agent (Plot Generator)
-  - Takes the Supervisor’s plan and poduces executable Python code for plots or tables (using matplotlib, seaborn, or plotly).
-  - Executes the code within a secure sandbox (e.g., Docker, Jupyter kernel).
-  - Returns visual outputs and summaries to the Supervisor.
-
-Feedback Loop
-  - The Supervisor reviews generated plots and summaries, refining prompts or parameters to improve relevance and clarity.
-  - Ensures report coherence and visual quality before final integration.
+It interpret the automated EDA (summary and plots), data sample, and metedata agent output to produce textual insights.
 
 ### Report Generation Layer
 
 Combines all outputs—metadata, plots, insights—into a cohesive, publication-ready report.
 Pipeline: Markdown → HTML/PDF (via Jinja2, WeasyPrint, or ReportLab).
 #### Structure:
+
 ```text
 .
 ├── README.md                   # Main project documentation
@@ -52,7 +85,6 @@ Pipeline: Markdown → HTML/PDF (via Jinja2, WeasyPrint, or ReportLab).
 ```
 
 ### Execution & Integration Layer
-- Isolates and executes code safely (Python sandbox, Docker, or notebook kernel).
 - Connects seamlessly to existing data pipelines (NiFi, Airflow, etc.) for automatic scheduling and dataset refresh.
 - Supports APIs for external system integration.
 
@@ -62,7 +94,6 @@ Pipeline: Markdown → HTML/PDF (via Jinja2, WeasyPrint, or ReportLab).
 | LLM & Agent Framework	| OpenAI GPT / Local LLMs (Llama 3, Mistral) via LangChain, LangGraph, or CrewAI|
 | Data Handling	| Pandas, Polars|
 | Visualization	| Matplotlib, Seaborn, Plotly|
-| Execution Sandbox	| exec, Docker, or jupyter_client|
 | Reporting	| Jinja2, Markdown, WeasyPrint, ReportLab|
 | Storage	| SQLite, local FS for logs & results|
 
