@@ -173,7 +173,7 @@ From the project root:
 
 ```bash
 cd sandbox
-docker build -t  -f dockerfile.sandbox .
+docker build -t llm-sandbox -f sandbox/Dockerfile.sandbox .
 ```
 
 Generated files appear in:
