@@ -173,8 +173,7 @@ From the project root:
 
 ```bash
 cd sandbox
-docker build -t intelligent-reporting-sandbox -f dockerfile.sandbox .
-docker run -d --name reporting-sandbox intelligent-reporting-sandbox
+docker build -t  -f dockerfile.sandbox .
 ```
 
 Generated files appear in:

@@ -24,6 +24,9 @@ def agents_pipeline(file_path: str) -> list:
 
     # load_dotenv()
 
+    # Extract data directory for sandbox mounting
+    data_dir = os.path.dirname(file_path) if os.path.dirname(file_path) else "data"
+
     loader = CSVLoader()
     df = loader.load(file_path=file_path)
 
@@ -100,10 +103,14 @@ def agents_pipeline(file_path: str) -> list:
     for task in tasks.get("tasks", []):
         task_name = task.get("name", "unnamed_task")
 
+        # Convert file path to sandbox path (data dir is mounted to /sandbox/data)
+        # Remove 'data/' prefix if present and prepend '/sandbox/data/'
+        sandbox_path = "/sandbox/data/" + os.path.basename(file_path)
+
         assistant_out = assistant_query(
             model="deepseek-v3.1:671b-cloud",
             supervisor_response=task,
-            path=file_path,
+            path=sandbox_path,
         )
 
         try:
@@ -122,7 +129,7 @@ def agents_pipeline(file_path: str) -> list:
         print(f"--- RUNNING TASK: {task_name} ---")
         print(code)
 
-        result = run_in_docker_sandbox(name=task_name, code=code)
+        result = run_in_docker_sandbox(name=task_name, code=code, data_dir=data_dir)
         print(result)
 
         cells.append(nbf.v4.new_markdown_cell(f"## Task: {task_name}"))
