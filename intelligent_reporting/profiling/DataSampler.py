@@ -21,21 +21,20 @@ class DataSampler:
         if folder:
             os.makedirs(folder, exist_ok=True)
 
-
     def no_sample(self):
-        '''avoid sampling if the data is already small'''
+        """avoid sampling if the data is already small"""
 
         if self.df.height <= self.max_rows:
             print("No sampling needed.")
             return self.df
         return None
 
-
     def systematic_sample(self):
-        '''apply systematic sampling if there's any time related column'''
+        """apply systematic sampling if there's any time related column"""
 
         datetime_cols = [
-            col for col, dtype in zip(self.df.columns, self.df.dtypes)
+            col
+            for col, dtype in zip(self.df.columns, self.df.dtypes)
             if dtype == pl.Datetime
         ]
         if datetime_cols:
@@ -44,17 +43,16 @@ class DataSampler:
             return self.df.take_every(step)
         return None
 
-
     def stratified_sample(self):
-        '''apply stratified sampling if there's categorical column'''
-        print('apply statified logic')
+        """apply stratified sampling if there's categorical column"""
+        print("apply statified logic")
 
         categorical_cols = [
-            col for col in self.df.columns
+            col
+            for col in self.df.columns
             if self.df[col].dtype == pl.Utf8 or self.df[col].n_unique() < 20
         ]
         categorical_cols = sorted(categorical_cols, key=lambda c: self.df[c].n_unique())
-
 
         for col in categorical_cols:
             unique_vals = self.df[col].unique().to_list()
@@ -62,7 +60,9 @@ class DataSampler:
             sampled_groups = []
 
             for value in unique_vals:
-                group = self.df.filter((pl.col(col).is_not_null()) & (pl.col(col) == value))
+                group = self.df.filter(
+                    (pl.col(col).is_not_null()) & (pl.col(col) == value)
+                )
                 n = min(per_group, group.height)
                 if n > 0:
                     sampled_groups.append(group.sample(n=n, seed=42))
@@ -72,9 +72,8 @@ class DataSampler:
 
         return None
 
-
     def random_sample(self):
-        '''apply sample random sampling when each row have the same proba to be present the the sample'''
+        """apply sample random sampling when each row have the same proba to be present the the sample"""
 
         print("Applying random sampling.")
         n = min(self.max_rows, self.df.height)
@@ -87,18 +86,19 @@ class DataSampler:
             self.no_sample,
             self.systematic_sample,
             self.stratified_sample,
-            self.random_sample
+            self.random_sample,
         ]:
             sample = strategy()
             if sample is not None and not sample.is_empty():
                 print(f"Final sample shape: {sample.height} rows")
-                
+
                 # make json serializable
                 sample_json = sample.to_dicts()
 
                 # dump JSON to file
                 with open(self.output_path, "w") as f:
-                    json.dump(sample_json, f, indent=4)
+                    # json.dump(sample_json, f, indent=4)
+                    json.dump(sample_json, f, separators=(",", ":"))
 
                 # return sample
                 return sample_json
