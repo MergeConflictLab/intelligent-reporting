@@ -103,7 +103,7 @@ def agents_pipeline(file_path: str) -> list:
         assistant_out = assistant_query(
             model="deepseek-v3.1:671b-cloud",
             supervisor_response=task,
-            path="data/cleaned_salad_data.csv",
+            path=file_path,
         )
 
         try:
