@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 import json
 
-class schemaInfererDB:
+class SchemaInfererDB:
     def __init__(self):
         self.schema = {}
 
@@ -83,4 +83,4 @@ class schemaInfererDB:
 
 
         print(f"Schema saved to: {schema_file}")
-        return schema_file
+        return self.schema

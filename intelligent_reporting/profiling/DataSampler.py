@@ -8,16 +8,16 @@ warnings.filterwarnings("ignore")
 
 
 class DataSampler:
-    def __init__(self, *, df: pl.DataFrame, max_rows: int = 3, output_path: str = None):
-        if output_path is None:
-            raise ValueError("You must provide an output_path (including filename).")
+    def __init__(self, *, df: pl.DataFrame, max_rows: int = 3, sample_dir: str = None):
+        if sample_dir is None:
+            raise ValueError("You must provide an sample_dir (including filename).")
         self.df = df
         self.max_rows = max_rows
-        self.output_path = output_path
+        self.sample_dir = sample_dir
         self.frac = min(1.0, max_rows / df.height)
 
         # Ensure parent folder exists
-        folder = os.path.dirname(self.output_path)
+        folder = os.path.dirname(self.sample_dir)
         if folder:
             os.makedirs(folder, exist_ok=True)
 
@@ -26,7 +26,6 @@ class DataSampler:
         '''avoid sampling if the data is already small'''
 
         if self.df.height <= self.max_rows:
-            print("No sampling needed.")
             return self.df
         return None
 
@@ -39,7 +38,6 @@ class DataSampler:
             if dtype == pl.Datetime
         ]
         if datetime_cols:
-            print("Applying datetime systematic sampling.")
             step = max(1, self.df.height // self.max_rows)
             return self.df.take_every(step)
         return None
@@ -47,7 +45,6 @@ class DataSampler:
 
     def stratified_sample(self):
         '''apply stratified sampling if there's categorical column'''
-        print('apply statified logic')
 
         categorical_cols = [
             col for col in self.df.columns
@@ -76,13 +73,10 @@ class DataSampler:
     def random_sample(self):
         '''apply sample random sampling when each row have the same proba to be present the the sample'''
 
-        print("Applying random sampling.")
         n = min(self.max_rows, self.df.height)
         return self.df.sample(n=n, seed=42)
 
     def run_sample(self):
-        print("Selecting sampling strategy...")
-
         for strategy in [
             self.no_sample,
             self.systematic_sample,
@@ -91,13 +85,12 @@ class DataSampler:
         ]:
             sample = strategy()
             if sample is not None and not sample.is_empty():
-                print(f"Final sample shape: {sample.height} rows")
-                
+            
                 # make json serializable
                 sample_json = sample.to_dicts()
 
                 # dump JSON to file
-                with open(self.output_path, "w") as f:
+                with open(f"{self.sample_dir}/sample.json", "w") as f:
                     json.dump(sample_json, f, indent=4)
 
                 # return sample

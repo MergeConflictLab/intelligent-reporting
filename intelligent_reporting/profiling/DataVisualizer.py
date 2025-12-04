@@ -9,10 +9,10 @@ warnings.filterwarnings("ignore")
 
 
 class DataVisualizer:
-    def __init__(self, *, df: pl.DataFrame, output_dir="EDA_output",figures_dir, top_k_categories=5):
+    def __init__(self, *, df: pl.DataFrame, summary_dir="EDA_output",figures_dir, top_k_categories=5):
         self.df = df
-        self.output_dir = output_dir
-        self.figures_dir = figures_dir if figures_dir and os.path.isabs(figures_dir) else os.path.join(self.output_dir, "figures")
+        self.summary_dir = summary_dir
+        self.figures_dir = figures_dir if figures_dir and os.path.isabs(figures_dir) else os.path.join(self.summary_dir, "figures")
         self.top_k_categories = top_k_categories
         self.top_k_categories = top_k_categories
 
@@ -21,7 +21,7 @@ class DataVisualizer:
         self.secondary_color = "#F5B041"   
         self.neutral_color = "#BFC9CA"     
 
-        os.makedirs(self.output_dir, exist_ok=True)
+        os.makedirs(self.summary_dir, exist_ok=True)
         os.makedirs(self.figures_dir, exist_ok=True)
 
         # know columns type
@@ -46,7 +46,6 @@ class DataVisualizer:
     def plot_numeric_distributions(self, top_n=2):
         '''plot numeric columns depends on variance value'''
         if not self.numeric_cols:
-            print("No numeric columns found.")
             return
 
         # top variance columns
@@ -72,7 +71,6 @@ class DataVisualizer:
         '''plot categorical columns'''
 
         if not self.cat_cols:
-            print("No categorical columns found.")
             return
 
         for col in self.cat_cols[:2]:
@@ -107,7 +105,6 @@ class DataVisualizer:
     def plot_time_series_columns(self):
         '''plot time column'''
         if not self.datetime_cols or not self.numeric_cols:
-            print("No datetime or numeric columns found for time series plotting.")
             return
 
         # umeric column with highest variance
@@ -134,10 +131,6 @@ class DataVisualizer:
             self._save_plot(fig, f"time_series_{dt_col}")
 
     def run_viz(self):
-        print("Generating numeric plots...")
         self.plot_numeric_distributions()
-        print("Generating categorical plots...")
         self.plot_categorical_columns()
-        print("Generating time series plots...")
         self.plot_time_series_columns()
-        print("All plots saved in:", self.figures_dir)

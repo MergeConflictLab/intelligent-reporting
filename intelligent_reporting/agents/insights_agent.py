@@ -3,7 +3,7 @@ import json
 from langchain_ollama import ChatOllama
 from langchain.messages import HumanMessage, SystemMessage
 
-from scripts.utils import json_fix
+from intelligent_reporting.utils.utils import json_fix
 
 
 def insights_query(img, summary_data, sample_data, description):

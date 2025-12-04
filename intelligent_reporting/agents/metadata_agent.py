@@ -8,7 +8,6 @@ def metadata_query(
     model: str,
     sample_data: List[Dict],
     schema: Dict[str, str],
-    description: List[Dict],
 ) -> str:
     """Run a prompt through Ollama using LangChain integration."""
     llm = ChatOllama(
@@ -39,7 +38,6 @@ Use the following format:
         
         Data: {json.dumps(sample_data)}
         Schema: {json.dumps(schema)}
-        Column details: {json.dumps(description)}
         """
         ),
     ]

@@ -10,7 +10,7 @@ sns.set_palette("Set2")
 
 
 class DataSummarizer:
-    def __init__(self, *, df: pl.DataFrame, output_dir: str, figures_dir=None, verbose=False):
+    def __init__(self, *, df: pl.DataFrame, summary_dir: str, figures_dir=None, verbose=False):
 
         # extract num and cat cols
         numeric_cols = [
@@ -31,11 +31,11 @@ class DataSummarizer:
         self.numeric_cols = numeric_cols
         self.categorical_cols = categorical_cols
 
-        self.output_dir = output_dir
-        self.figures_dir = figures_dir if figures_dir and os.path.isabs(figures_dir) else os.path.join(self.output_dir, figures_dir or "figures")
+        self.summary_dir = summary_dir
+        self.figures_dir = figures_dir if figures_dir and os.path.isabs(figures_dir) else os.path.join(self.summary_dir, figures_dir or "figures")
         self.verbose = verbose
 
-        os.makedirs(self.output_dir, exist_ok=True)
+        os.makedirs(self.summary_dir, exist_ok=True)
         os.makedirs(self.figures_dir, exist_ok=True)
 
 
@@ -73,7 +73,7 @@ class DataSummarizer:
             summary_info["constant_columns"] = self.detect_constants()
 
         # Save summary JSON
-        json_path = os.path.join(self.output_dir, "data_summary.json")
+        json_path = os.path.join(self.summary_dir, "data_summary.json")
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(summary_info, f, indent=4, ensure_ascii=False)
 

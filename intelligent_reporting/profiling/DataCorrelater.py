@@ -8,11 +8,10 @@ sns.set_theme(style="whitegrid")
 
 class DataCorrelater:
 
-    def __init__(self, df: pl.DataFrame, result_dir: str):
+    def __init__(self, df: pl.DataFrame):
         self.df = df
-        self.result_dir = result_dir
-        self.figures_dir = os.path.join(result_dir, 'figures')
-        self.json_path = os.path.join(self.result_dir, datetime.now().strftime('%Y-%m-%d %H-%M-%S'))
+        self.figures_dir = os.path.join('results', 'figures')
+        self.json_path = os.path.join('results', f"{datetime.now().strftime('%Y-%m-%d %H-%M-%S')}.json")
 
 
         # Professional colors
@@ -22,7 +21,7 @@ class DataCorrelater:
 
         # Create folders
         os.makedirs(self.figures_dir, exist_ok=True)
-        os.makedirs(result_dir, exist_ok=True)
+        os.makedirs('results', exist_ok=True)
 
     def _numeric_columns(self):
         return [col for col, dt in zip(self.df.columns, self.df.dtypes)
@@ -90,28 +89,23 @@ class DataCorrelater:
             plt.close(fig)
             results.append({"col1": col1, "col2": col2, "correlation": round(float(value),2)})
 
-        # Update JSON summary without storing paths
+        # # Update JSON summary without storing paths
 
-        if os.path.exists(self.json_path):
-            with open(self.json_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        else:
-            data = {}
-        data["correlations"] = results
-        with open(self.json_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
+        # if os.path.exists(self.json_path):
+        #     with open(self.json_path, "r", encoding="utf-8") as f:
+        #         data = json.load(f)
+        # else:
+        #     data = {}
+        # data["correlations"] = results
+        # with open(self.json_path, "w", encoding="utf-8") as f:
+        #     json.dump(data, f, indent=4)
 
         return results
 
     def run(self, threshold=0.8, top_n=5):
-        print("Generating correlation heatmap...")
-        corr_matrix, heatmap_path = self.correlation_heatmap()
-
-        print("Generating top correlated pairs...")
-        top_corrs = self.plot_top_correlations(threshold=threshold, top_n=top_n)
-
-        print("Correlation analysis completed.")
-        return {
-            "heatmap": heatmap_path,
-            "top_correlations_summary": self.json_path
-        }
+        _ , heatmap_path = self.correlation_heatmap()
+        _ = self.plot_top_correlations(threshold=threshold, top_n=top_n)
+        # return {
+        #     "heatmap": heatmap_path,
+        #     "top_correlations_summary": self.json_path
+        # }
