@@ -137,7 +137,6 @@ results/
 *.csv
 *.xlsx
 *.xls
-main.py
 script.py
 code/
 schema/
