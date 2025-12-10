@@ -1,11 +1,18 @@
 import toon
 from langchain.messages import HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
+import os
+from langchain_openai import AzureChatOpenAI
+from scripts.utils import strip_code_fence, json_fix
 
 
-def assistant_query(supervisor_response, path, model="mistral"):
-    llm = ChatOllama(model=model, temperature=0.1)
-
+def assistant_query(supervisor_response, path):
+    llm = AzureChatOpenAI(
+    azure_deployment="gpt-5-nano",  # The name you gave the model in Azure AI Studio
+    api_version="2024-12-01-preview",           # Check Azure for your specific version
+    azure_endpoint= os.getenv("AZURE_ENDPOINT"),
+    api_key=os.getenv("API_KEY"),
+)
     llm_prompt = [
         SystemMessage(
             content=(
@@ -37,9 +44,17 @@ Return ONLY a task name on the first line and Python code starting on the second
 
     try:
         response = llm.invoke(llm_prompt)
-        raw = response.content.strip()
+        # Normalize output: remove markdown/code fences and attempt simple json fix
+        raw = strip_code_fence(response.content)
+        # json_fix will return the input unchanged if it's not JSON, so it's safe here
+        fixed = json_fix(raw)
+        if not isinstance(fixed, str):
+            # If json_fix parsed JSON (unlikely for assistant), convert back to string
+            import json as _json
 
-        name, code = raw.split("\n", 1)
+            fixed = _json.dumps(fixed)
+
+        name, code = fixed.split("\n", 1)
         name = name.strip()
         code = code.strip()
 

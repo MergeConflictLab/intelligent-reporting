@@ -5,18 +5,21 @@ import json
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain.messages import HumanMessage, SystemMessage
-
+from langchain_openai import AzureChatOpenAI
+import os
+from scripts.utils import json_fix, strip_code_fence
 
 def supervisor_query(
-    model: str,
     sample_data: List[Dict],
     description: List[Dict],
 ):
     """Run a prompt through local Ollama using LangChain integration."""
-    llm = ChatOllama(
-        model=model,
-        temperature=0.1,
-    )
+    llm = AzureChatOpenAI(
+    azure_deployment="gpt-5-nano",  # The name you gave the model in Azure AI Studio
+    api_version="2024-12-01-preview",           # Check Azure for your specific version
+    azure_endpoint= os.getenv("AZURE_ENDPOINT"),
+    api_key=os.getenv("API_KEY"),
+)
     llm_prompt = [
         SystemMessage(
             content=(
@@ -62,7 +65,10 @@ Rules:
 
     try:
         response = llm.invoke(llm_prompt)
-        return response.content.strip()
+        # Remove markdown/code fences and attempt to parse JSON
+        content = strip_code_fence(response.content)
+        parsed = json_fix(content)
+        return parsed
 
     except Exception as e:
         raise e
