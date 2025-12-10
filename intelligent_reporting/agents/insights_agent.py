@@ -3,8 +3,13 @@ from typing import Dict, List, Any
 
 from langchain_ollama import ChatOllama
 from langchain.messages import HumanMessage, SystemMessage
+from langchain_openai import AzureChatOpenAI
+from dotenv_vault import load_dotenv
+import os
 
-from scripts.utils import json_fix
+load_dotenv()
+
+from scripts.utils import json_fix, strip_code_fence
 
 
 JSON_SCHEMA_TEMPLATE = """[
@@ -24,10 +29,14 @@ def insights_query(
     story_mode: bool = False,
 ) -> Any:
 
-    llm = ChatOllama(
-        model="qwen3-vl:235b-cloud",
-        temperature=0.2,
-    )
+    llm = AzureChatOpenAI(
+         azure_deployment="gpt-5-nano",  # The name you gave the model in Azure AI Studio
+         api_version="2024-12-01-preview",           # Check Azure for your specific version
+         azure_endpoint= os.getenv("AZURE_ENDPOINT"),
+         api_key=os.getenv("API_KEY"),
+    
+)
+    
 
     system_prompt = (
         "You are a senior data analyst and storytelling master. "

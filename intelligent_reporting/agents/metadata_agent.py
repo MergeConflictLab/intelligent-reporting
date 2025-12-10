@@ -2,20 +2,22 @@ from typing import Dict, List
 import json
 from langchain_ollama import ChatOllama
 from langchain.messages import HumanMessage, SystemMessage
-
+from langchain_openai import AzureChatOpenAI
+import os
+from scripts.utils import json_fix, strip_code_fence
 
 def metadata_query(
-    model: str,
     sample_data: List[Dict],
     schema: Dict[str, str],
     description: List[Dict],
 ) -> str:
     """Run a prompt through Ollama using LangChain integration."""
-    llm = ChatOllama(
-        model=model,
-        temperature=0.1,
-        num_predict=2048,
-    )
+    llm = AzureChatOpenAI(
+    azure_deployment="gpt-5-nano",  # The name you gave the model in Azure AI Studio
+    api_version="2024-12-01-preview",           # Check Azure for your specific version
+    azure_endpoint= os.getenv("AZURE_ENDPOINT"),
+    api_key=os.getenv("API_KEY"),
+)
     llm_prompt = [
         SystemMessage(
             content="""
@@ -46,6 +48,9 @@ Use the following format:
 
     try:
         response = llm.invoke(llm_prompt)
-        return response.content.strip()
+        # Normalize possible markdown/code fences and parse JSON if present
+        content = strip_code_fence(response.content)
+        parsed = json_fix(content)
+        return parsed
     except Exception as e:
         raise e
