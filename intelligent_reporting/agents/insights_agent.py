@@ -1,14 +1,10 @@
 import json
-from typing import Dict, List, Any
+import os
+from typing import Any, Dict, List
 
-from langchain_ollama import ChatOllama
 from langchain.messages import HumanMessage, SystemMessage
 from langchain_openai import AzureChatOpenAI
-from dotenv_vault import load_dotenv
-import os
-
-load_dotenv()
-
+from intelligent_reporting.agents.fallback_manager import get_fallback_llm
 from scripts.utils import json_fix, strip_code_fence
 
 
@@ -27,17 +23,17 @@ def insights_query(
     sample_data: List[Dict[str, Any]],
     description: str,
     story_mode: bool = False,
+    offline_mode: bool = False,
 ) -> Any:
-
-    llm = AzureChatOpenAI(
-         azure_deployment="gpt-5-nano",  # The name you gave the model in Azure AI Studio
-         api_version="2024-12-01-preview",           # Check Azure for your specific version
-         azure_endpoint= os.getenv("AZURE_ENDPOINT"),
-         api_key=os.getenv("API_KEY"),
-    
-)
-    
-
+    if offline_mode:
+        llm = get_fallback_llm(task_type="vision")
+    else:
+        llm = AzureChatOpenAI(
+            azure_deployment="gpt-5-nano",  # The name you gave the model in Azure AI Studio
+            api_version="2024-12-01-preview",  # Check Azure for your specific version
+            azure_endpoint=os.getenv("AZURE_ENDPOINT"),
+            api_key=os.getenv("API_KEY"),
+        )
     system_prompt = (
         "You are a senior data analyst and storytelling master. "
         "Extract concise, high-value insights and tell detailed stories suitable"
@@ -78,6 +74,29 @@ def insights_query(
 
     try:
         response = llm.invoke(messages)
-        return json_fix(response.content)
+        content = (
+            response.content
+            if isinstance(response.content, str)
+            else str(response.content)
+        )
+        raw = strip_code_fence(content)
+        fixed = json_fix(raw)
+        if not isinstance(fixed, str):
+
+            fixed = json.dumps(fixed)
+        return fixed
     except Exception as e:
-        raise Exception(f"Failed to generate insights: {str(e)}") from e
+        print(Exception(f"Failed to generate insights: {str(e)}"))
+        llm = get_fallback_llm(task_type="vision")
+        response = llm.invoke(messages)
+        content = (
+            response.content
+            if isinstance(response.content, str)
+            else str(response.content)
+        )
+        raw = strip_code_fence(content)
+        fixed = json_fix(raw)
+        if not isinstance(fixed, str):
+
+            fixed = json.dumps(fixed)
+        return json_fix(response.content)

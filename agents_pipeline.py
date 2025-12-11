@@ -1,10 +1,6 @@
 import json
 import os
-import glob
 import time
-import subprocess
-from dotenv_vault import load_dotenv
-
 import nbformat as nbf
 from intelligent_reporting.agents.metadata_agent import metadata_query
 from intelligent_reporting.agents.supervisor_agent import supervisor_query
@@ -18,12 +14,11 @@ from intelligent_reporting.profiling.DataSampler import DataSampler
 from intelligent_reporting.agents.insights_agent import insights_query
 from scripts.utils import json_fix, strip_code_fence
 from scripts.utils import encode_image
+from dotenv_vault import load_dotenv
 
 
-def agents_pipeline(file_path: str) -> list:
-
-    # load_dotenv()
-
+def agents_pipeline(file_path: str, offline_mode: bool = False) -> list:
+    load_dotenv()
     # Extract data directory for sandbox mounting
     data_dir = os.path.dirname(file_path) if os.path.dirname(file_path) else "data"
 
@@ -40,10 +35,11 @@ def agents_pipeline(file_path: str) -> list:
     sample_data = sampler.run_sample()
 
     raw_response = metadata_query(
-        model="deepseek-v3.1:671b-cloud",
+        # model="deepseek-v3.1:671b-cloud",
         sample_data=sample_data,
         schema=schema,
         description=description,
+        offline_mode=offline_mode,
     )
 
     response = json_fix(raw_response)
@@ -66,8 +62,9 @@ def agents_pipeline(file_path: str) -> list:
 
     output = supervisor_query(
         description=supervisor_description,
-        model="deepseek-v3.1:671b-cloud",
+        # model="deepseek-v3.1:671b-cloud",
         sample_data=sample_data,
+        offline_mode=offline_mode,
     )
 
     parsed_output = json_fix(output)
@@ -102,15 +99,13 @@ def agents_pipeline(file_path: str) -> list:
     print(f"Found {len(tasks.get('tasks', []))} tasks to execute.")
     for task in tasks.get("tasks", []):
         task_name = task.get("name", "unnamed_task")
-
-        # Convert file path to sandbox path (data dir is mounted to /sandbox/data)
-        # Remove 'data/' prefix if present and prepend '/sandbox/data/'
         sandbox_path = "/sandbox/data/" + os.path.basename(file_path)
 
         assistant_out = assistant_query(
-            model="deepseek-v3.1:671b-cloud",
+            # model="deepseek-v3.1:671b-cloud",
             supervisor_response=task,
             path=sandbox_path,
+            offline_mode=offline_mode,
         )
 
         try:
@@ -151,7 +146,8 @@ def agents_pipeline(file_path: str) -> list:
         for artifact in result["artifacts"]:
             fname = os.path.basename(artifact)
             if fname.lower().endswith((".png", ".jpg")):
-                cells.append(nbf.v4.new_markdown_cell(f"### Plot\n![]({artifact})"))
+                rel_path = os.path.relpath(artifact, os.getcwd())
+                cells.append(nbf.v4.new_markdown_cell(f"### Plot\n![]({rel_path})"))
             else:
                 with open(artifact, encoding="utf-8") as f:
                     cells.append(
@@ -170,6 +166,7 @@ def agents_pipeline(file_path: str) -> list:
                 summary_data=response,
                 sample_data=sample_data,
                 description=task,
+                offline_mode=offline_mode,
                 # api_key=os.getenv("API_KEY"),
                 # azure_endpoint=os.getenv("AZURE_ENDPOINT"),
             )
@@ -199,4 +196,7 @@ def agents_pipeline(file_path: str) -> list:
 
 
 if __name__ == "__main__":
-    agents_pipeline(file_path="data/cleaned_salad_data.csv")
+    insights = agents_pipeline(
+        file_path="data/cleaned_salad_data.csv", offline_mode=False
+    )
+    print(insights)

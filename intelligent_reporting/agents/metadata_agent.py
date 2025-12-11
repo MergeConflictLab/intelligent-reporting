@@ -1,28 +1,38 @@
-from typing import Dict, List
 import json
-from langchain_ollama import ChatOllama
+from typing import Dict, List
+
 from langchain.messages import HumanMessage, SystemMessage
+from langchain_ollama import ChatOllama
+
+from intelligent_reporting.agents.fallback_manager import get_fallback_llm
 from langchain_openai import AzureChatOpenAI
 import os
 from scripts.utils import json_fix, strip_code_fence
+
 
 def metadata_query(
     sample_data: List[Dict],
     schema: Dict[str, str],
     description: List[Dict],
+    offline_mode: bool = False,
 ) -> str:
-    """Run a prompt through Ollama using LangChain integration."""
-    llm = AzureChatOpenAI(
-    azure_deployment="gpt-5-nano",  # The name you gave the model in Azure AI Studio
-    api_version="2024-12-01-preview",           # Check Azure for your specific version
-    azure_endpoint= os.getenv("AZURE_ENDPOINT"),
-    api_key=os.getenv("API_KEY"),
-)
+    """Run a prompt through Ollama using LangChain integration or Fallback LLM."""
+
+    if offline_mode:
+        llm = get_fallback_llm(task_type="text")
+    else:
+        llm = AzureChatOpenAI(
+            azure_deployment="gpt-5-nano",  # The name you gave the model in Azure AI Studio
+            api_version="2024-12-01-preview",  # Check Azure for your specific version
+            azure_endpoint=os.getenv("AZURE_ENDPOINT"),
+            api_key=os.getenv("API_KEY"),
+        )
+
     llm_prompt = [
         SystemMessage(
             content="""
-You are a data analyst. 
-Summarize the dataset structure based on the provided schema. 
+You are a data analyst.
+Summarize the dataset structure based on the provided schema.
 Respond **only** in JSON with keys 'table_description' and 'columns', where 'columns' is a list of column summaries with actual text descriptions about each column.
 """
         ),
@@ -36,9 +46,9 @@ Use the following format:
             "name": "column_name",
             "description": "A brief description of the column."
         }},...
-    ] 
+    ]
 }}
-        
+
         Data: {json.dumps(sample_data)}
         Schema: {json.dumps(schema)}
         Column details: {json.dumps(description)}
@@ -53,4 +63,7 @@ Use the following format:
         parsed = json_fix(content)
         return parsed
     except Exception as e:
-        raise e
+        print(Exception(f"Failed to generate metadata : {str(e)}"))
+        llm = get_fallback_llm(task_type="text")
+        response = llm.invoke(llm_prompt)
+        return json_fix(response.content.strip())

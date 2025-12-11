@@ -1,18 +1,37 @@
-import toon
+import json
+
 from langchain.messages import HumanMessage, SystemMessage
-from langchain_ollama import ChatOllama
 import os
 from langchain_openai import AzureChatOpenAI
 from scripts.utils import strip_code_fence, json_fix
 
+from intelligent_reporting.agents.fallback_manager import get_fallback_llm
 
-def assistant_query(supervisor_response, path):
-    llm = AzureChatOpenAI(
-    azure_deployment="gpt-5-nano",  # The name you gave the model in Azure AI Studio
-    api_version="2024-12-01-preview",           # Check Azure for your specific version
-    azure_endpoint= os.getenv("AZURE_ENDPOINT"),
-    api_key=os.getenv("API_KEY"),
-)
+
+def assistant_query(
+    supervisor_response: list[dict], path: str, offline_mode: bool = False
+):
+    """
+    Docstring for assistant_query
+
+    :param supervisor_response: Description
+    :type supervisor_response: list[dict]
+    :param path: Description
+    :type path: str
+    :param model: Description
+    :type model: str
+    :param offline_mode: Description
+    :type offline_mode: bool
+    """
+    if offline_mode:
+        llm = get_fallback_llm(task_type="text")
+    else:
+        llm = AzureChatOpenAI(
+            azure_deployment="gpt-5-nano",
+            api_version="2024-12-01-preview",
+            azure_endpoint=os.getenv("AZURE_ENDPOINT"),
+            api_key=os.getenv("API_KEY"),
+        )
     llm_prompt = [
         SystemMessage(
             content=(
@@ -34,7 +53,7 @@ Rules:
         HumanMessage(
             content=(
                 f"""
-Supervisor plan: {toon.encode(supervisor_response)}
+Supervisor plan: {json.dumps(supervisor_response)}
 Dataset path: {path}
 Return ONLY a task name on the first line and Python code starting on the second line.
                 """
@@ -44,15 +63,16 @@ Return ONLY a task name on the first line and Python code starting on the second
 
     try:
         response = llm.invoke(llm_prompt)
-        # Normalize output: remove markdown/code fences and attempt simple json fix
-        raw = strip_code_fence(response.content)
-        # json_fix will return the input unchanged if it's not JSON, so it's safe here
+        content = (
+            response.content
+            if isinstance(response.content, str)
+            else str(response.content)
+        )
+        raw = strip_code_fence(content)
         fixed = json_fix(raw)
         if not isinstance(fixed, str):
-            # If json_fix parsed JSON (unlikely for assistant), convert back to string
-            import json as _json
 
-            fixed = _json.dumps(fixed)
+            fixed = json.dumps(fixed)
 
         name, code = fixed.split("\n", 1)
         name = name.strip()
@@ -61,4 +81,15 @@ Return ONLY a task name on the first line and Python code starting on the second
         return {"name": name, "code": code}
 
     except Exception as e:
-        raise e
+        print(Exception(f"Failed to generate Python code: {str(e)}"))
+        llm = get_fallback_llm(task_type="text")
+        response = llm.invoke(llm_prompt)
+        content = (
+            response.content
+            if isinstance(response.content, str)
+            else str(response.content)
+        )
+        raw = strip_code_fence(content)
+        raw = strip_code_fence(response.content)
+        fixed = json_fix(raw)
+        return fixed
