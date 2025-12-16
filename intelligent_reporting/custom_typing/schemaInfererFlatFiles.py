@@ -1,8 +1,10 @@
+from ..connectors.registry import register_file_schema_inferer
 import polars as pl
 from datetime import datetime
 import os
 import json
 
+@register_file_schema_inferer
 class SchemaInfererFlatFiles():
     """This class should be responsible of infering the pl.DataFrame object's schema, apply it and generate the schema report."""
 
@@ -140,8 +142,7 @@ class SchemaInfererFlatFiles():
         non_string_mask = bool_mask | int_mask | datetime_mask | float_mask
         string_mask = ~non_string_mask
         string_ratio = string_mask.mean()
-
-
+        
         return {
             "int": float(int_ratio),
             "float": float(float_ratio),
@@ -299,7 +300,17 @@ class SchemaInfererFlatFiles():
         ])
     
 
-    def infer_schema(self, df: pl.DataFrame):
+    @staticmethod
+    def _to_serializable(obj):
+        """Convert NumPy / pandas / non-serializable types to JSON-safe values."""
+        if hasattr(obj, "item"):
+            return obj.item()
+        if isinstance(obj, set):
+            return list(obj)
+        return str(obj)
+
+
+    def infer_schema(self, df: pl.DataFrame, schema_dir: str):
         """
         Infers column types, uniqueness, and missing ratio for each column.
         Inforce the schema infered to the pl.DataFrame df.
@@ -335,38 +346,15 @@ class SchemaInfererFlatFiles():
         # 5. apply conversions
         cleaned_df = self._apply_conversions(df, converted_cols)
 
-        return cleaned_df, self.schema
-           
-    @staticmethod
-    def _to_serializable(obj):
-        """Convert NumPy / pandas / non-serializable types to JSON-safe values."""
-        if hasattr(obj, "item"):
-            return obj.item()
-        if isinstance(obj, set):
-            return list(obj)
-        return str(obj)
-    
-    def dump_schema(self, *, schema: dict, schema_dir: str):
-        """
-        Dump the inferred schema to a JSON file.
-        The output file will be named schema-yyyy-mm-dd hh-mm-ss.json inside schema_dir.
-        """
-        # ensure output directory exists
+        # ---
         os.makedirs(schema_dir, exist_ok=True)
-
-
-        # extract base filename without extension
         base_name = "schema-"+ datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-
-
-        # make full schema file path
         schema_file = os.path.join(schema_dir, f"{base_name}.json")
-
 
         # write the json file
         with open(schema_file, "w", encoding="utf-8") as f:
-            json.dump(schema, f, indent=4, default=self._to_serializable, ensure_ascii=False)
-
+            json.dump(self.schema, f, indent=4, default=self._to_serializable, ensure_ascii=False)
 
         print(f"Schema saved to: {schema_file}")
-        return schema_file
+
+        return cleaned_df, self.schema

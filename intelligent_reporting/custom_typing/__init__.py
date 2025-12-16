@@ -1,5 +1,5 @@
 from .downCaster import DownCaster
 from .schemaInfererFlatFiles import SchemaInfererFlatFiles
-from .schemaInfererDB import schemaInfererDB
+from .schemaInfererDB import SchemaInfererDB
 
-__all__ = ["DownCaster", "SchemaInfererFlatFiles", "schemaInfererDB"]
+__all__ = ["DownCaster", "SchemaInfererFlatFiles", "SchemaInfererDB"]

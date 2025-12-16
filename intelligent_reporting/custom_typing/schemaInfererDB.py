@@ -1,9 +1,11 @@
+from ..connectors.registry import register_db_schema_inferer
 import polars as pl
 import os
 from datetime import datetime
 import json
 
-class schemaInfererDB:
+@register_db_schema_inferer
+class SchemaInfererDB:
     def __init__(self):
         self.schema = {}
 
@@ -41,7 +43,7 @@ class schemaInfererDB:
             return list(obj)
         return str(obj)
     
-    def dump_schema(self, df: pl.DataFrame, schema_dir: str):
+    def infer_schema(self, df: pl.DataFrame, schema_dir: str):
         """
         Take the polars Dataframe and dumps its schema in a schema_dir
         """
@@ -71,16 +73,10 @@ class schemaInfererDB:
                 }
         # extract base filename without extension
         base_name = "schema-"+ datetime.now().strftime("%Y-%m-%d %H-%M-%S")
-
-
         # make full schema file path
         schema_file = os.path.join(schema_dir, f"{base_name}.json")
-
-
         # write the json file
         with open(schema_file, "w", encoding="utf-8") as f:
             json.dump(self.schema, f, indent=4, default=self._to_serializable, ensure_ascii=False)
-
-
         print(f"Schema saved to: {schema_file}")
-        return schema_file
+        return df, self.schema
