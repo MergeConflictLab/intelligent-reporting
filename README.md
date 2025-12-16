@@ -1,86 +1,239 @@
-# AI-Driven Automated Report Generation System
+# 📁 Connectors Module
 
-## Overview
+The connectors module provides a unified and extensible system for loading data from multiple file formats and database engines.  
+It powers the data ingestion layer of `intelligent_reporting` and ensures each data source follows a consistent, predictable interface.
 
-This system uses Large Language Models (LLMs) and multi-agent orchestration to automatically transform raw datasets into structured, interpretable reports. It combines metadata analysis, visualization generation, and natural-language summarization to deliver daily or weekly data insights with minimal human intervention.
+---
 
-## System Architecture
-### Data Layer
-- Handles all data ingestion, validation, and profiling.
-- Inputs: CSV, Parquet, SQL, or API-based sources.
-- Processes: Cleansing, sampling, and profiling (via tools like pandas-profiling or ydata-profiling).
-- Outputs: A structured dataset and its metadata (schema, types, null counts, distributions).
-- Storage: Metadata and profiling results stored in SQLite or a lightweight local database.
+## 💡 What Connectors Do
 
-### Agent Layer
+- They take a file or database connection.  
+- They read the data.  
+- They return it in a clean, usable form for the rest of the system.  
 
-- A collaborative AI layer composed of specialized agents that sequentially process and interpret data.
-- Metadata Agent
-  - Generates a dataset overview and column-level metadata.
-  - Outputs structured JSON or Markdown describing data structure, types, and notable features.
-  - Enables downstream agents to “understand” the dataset before analysis.
+Each connector focuses on one format only (CSV, JSON, Excel, Parquet, XML, databases, etc.), which keeps things simple and organized.
 
-- Supervisor Agent (Reader)
-  - Reads metadata and dataset samples to identify patterns, anomalies, and analytical opportunities.
-  - Defines analysis goals and visualization ideas.
-  - Creates a task plan for the Assistant Agent, specifying what plots or analyses to perform.
+---
 
-- Assistant Agent (Plot Generator)
-  - Takes the Supervisor’s plan and poduces executable Python code for plots or tables (using matplotlib, seaborn, or plotly).
-  - Executes the code within a secure sandbox (e.g., Docker, Jupyter kernel).
-  - Returns visual outputs and summaries to the Supervisor.
+## 🧩 Available Connectors
 
-Feedback Loop
-  - The Supervisor reviews generated plots and summaries, refining prompts or parameters to improve relevance and clarity.
-  - Ensures report coherence and visual quality before final integration.
+| Connector            | Supported Types            | Description                                           |
+|----------------------|----------------------------|-------------------------------------------------------|
+| **CSVConnector**     | `.csv`, `.tsv`, `.txt`     | Reads delimited text files.                           |
+| **JSONConnector**    | `.json`                    | Reads JSON documents or arrays of records.            |
+| **ParquetConnector** | `.parquet`                 | Loads Parquet files via pandas/pyarrow.               |
+| **SpreadsheetConnector** | `.xlsx`, `.xls`, `.ods`| Loads Excel and spreadsheet-like formats.             |
+| **XMLConnector**     | `.xml`                     | Parses XML and converts tree structures into rows.    |
+| **SQLAlchemyConnector** | Databases & Cloud              | Connects to SQL databases using SQLAlchemy.           |
 
-### Report Generation Layer
+## 📌 Summary — All databases and warehouses you can ingest  
+❗ *Relational / SQL databases supported through SQLAlchemy:*
 
-Combines all outputs—metadata, plots, insights—into a cohesive, publication-ready report.
-Pipeline: Markdown → HTML/PDF (via Jinja2, WeasyPrint, or ReportLab).
-#### Structure:
-```text
-.
-├── README.md                   # Main project documentation
-├── requirements.txt            # Python dependencies
-│
-└── intelligent_reporting/
-    ├── agents/
-    ├── exporting/
-    ├── loading/
-    └── profiling/
+✔ PostgreSQL  
+✔ MySQL & MariaDB  
+✔ SQLite  
+✔ Oracle  
+✔ Microsoft SQL Server  
+✔ Amazon Redshift  
+✔ Snowflake  
+✔ CockroachDB  
+✔ BigQuery (via SQLAlchemy wrapper)  
+✔ Hive / Presto  
+✔ ClickHouse  
+✔ IBM DB2 / Informix  
+✔ SAP ASE  
+…and many others available through community SQLAlchemy dialects.
+---✔ PostgreSQL  
+✔ MySQL & MariaDB  
+✔ SQLite  
+✔ Oracle  
+✔ Microsoft SQL Server  
+✔ Amazon Redshift  
+✔ Snowflake  
+✔ CockroachDB  
+✔ BigQuery (via SQLAlchemy wrapper)  
+✔ Hive / Presto  
+✔ ClickHouse  
+✔ IBM DB2 / Informix  
+✔ SAP ASE  
+
+Below is the definitive list of which Python package you must install for each database, using the most widely supported and SQLAlchemy-compatible drivers.
+| Database                 | Python Driver (DBAPI)                | Install Command                              |
+|--------------------------|--------------------------------------|-----------------------------------------------|
+| **PostgreSQL**           | `psycopg2` / `psycopg2-binary`       | `pip install psycopg2-binary`                 |
+| **MySQL**                | `pymysql` / `mysqlclient`            | `pip install pymysql`                         |
+| **MariaDB**              | `mariadb`                            | `pip install mariadb`                         |
+| **SQLite**               | built-in (`sqlite3`)                 | *(no install needed)*                         |
+| **Oracle**               | `cx_Oracle`                          | `pip install cx_Oracle`                       |
+| **Microsoft SQL Server** | `pyodbc`                             | `pip install pyodbc`                          |
+| **Amazon Redshift**      | `redshift-connector` / `psycopg2`    | `pip install redshift-connector`              |
+| **Snowflake**            | `snowflake-connector-python`         | `pip install snowflake-connector-python`      |
+| **CockroachDB**          | PostgreSQL drivers (`psycopg2`)      | `pip install psycopg2-binary`                 |
+| **Google BigQuery**      | `pybigquery`                         | `pip install pybigquery`                      |
+| **Presto / Trino**       | `trino`                              | `pip install trino`                           |
+| **Hive**                 | `pyhive[hive]`                       | `pip install pyhive[hive]`                    |
+| **ClickHouse**           | `clickhouse-connect`                 | `pip install clickhouse-connect`              |
+| **IBM DB2 / Informix**   | `ibm_db`                             | `pip install ibm_db`                          |
+| **SAP ASE (Sybase)**     | `pyodbc` / `python-sybase` (legacy)  | `pip install pyodbc`                          |
+
+
+## 🧠 How It Works
+
+- The project automatically selects the correct connector based on the file extension.  
+  Example: `.csv` → CSV connector, `.json` → JSON connector.  
+
+- For databases, the system uses a dedicated database connector.
+
+This means you don’t need to think about how the data is loaded — it just works.
+
+## 🧠 How to Use the Pipeline
+
+### Example: Loading a Flat File, infering its schema and downcasting it
+#### 📥 Loading Data
+
+In this case, the `Pipeline` constructor accepts a single parameter named **`file`**.  
+This parameter represents the data source path and is intentionally named `file`
+(not `file_path` or `name_file`) to keep the API simple and consistent.
+
+All configuration is done at initialization time.  
+Therefore, the `load()` method **does not require positional arguments**.
+
+---
+
+#### 🧬 Inferring Schema
+
+The infer() method requires a dataframe and optionally accepts a schema directory.
+
+**Accepted parameters:**
+- `data` *(required)*: Polars DataFrame
+- `schema_dir` *(optional)*: directory where schemas are stored or generated
+
+---
+
+#### 🪶 Downcasting Data
+
+The `downcast()` method **only requires** the dataframe.
+
+**Accepted parameters:**
+- `data` *(required)*: Polars DataFrame
+
+---
+example:
+```python
+from intelligent_reporting.pipeline import Pipeline
+
+def main():
+    file = "data/samples.csv"
+    pipeline = Pipeline(file=file)
+    data = pipeline.load()  # returns a polars.DataFrame
+
+    # do anything with the DataFrame
+    # print(data)
+
+    typed, schema = pipeline.infer(data=raw) # also supports schema_dir
+    # print(typed)
+
+    downcasted = pipeline.downcast(data=typed) # only supports data
+    # print(downcasted)
+
+if __name__ == "__main__":
+    main()
 ```
 
-### Execution & Integration Layer
-- Isolates and executes code safely (Python sandbox, Docker, or notebook kernel).
-- Connects seamlessly to existing data pipelines (NiFi, Airflow, etc.) for automatic scheduling and dataset refresh.
-- Supports APIs for external system integration.
+#### 📌 Supported File Types & Accepted Parameters
 
-## Technical Stack Summary
-| Layer	| Tools / Frameworks|
-|-------|--------------------|
-| LLM & Agent Framework	| OpenAI GPT / Local LLMs (Llama 3, Mistral) via LangChain, LangGraph, or CrewAI|
-| Data Handling	| Pandas, Polars|
-| Visualization	| Matplotlib, Seaborn, Plotly|
-| Execution Sandbox	| exec, Docker, or jupyter_client|
-| Reporting	| Jinja2, Markdown, WeasyPrint, ReportLab|
-| Storage	| SQLite, local FS for logs & results|
+**CSV**
+> The file path must be provided at pipeline initialization.
 
-## Prerequisites for Success
-- High-Quality Data: Clean, consistent, and well-documented input.
-- Robust Models: Use capable LLMs for reasoning, coding, and summarization.
-- Clear Objectives: Define analytical goals (KPIs, anomalies, trends).
-- Scalable Infrastructure: Cloud-based or containerized compute for resource-intensive workloads.
-- Multidisciplinary Expertise: Collaboration among data engineers, ML experts, and analysts.
-- TTesting & Validation: Unit, integration, and benchmark testing across agents.
-- Ethical & Privacy Compliance: Conform to GDPR, HIPAA, and general AI ethics standards.
-- Continuous Feedback Loop: Incorporate user feedback to refine analysis and improve usability.
-- Iterative Development: Start small—automate core insights first, then expand into complex report generation.
+Accepted parameters for `load()`:
+- `has_header`: bool  
+- `separator`: string  
+- `encoding`: string  
 
-## Outcome
+---
 
-A dynamic AI platform capable of:
-- Automatically interpreting datasets,
-- Generating intelligent visualizations,
-- Synthesizing insights into narrative reports, and
-- Delivering consistent, interpretable analytics with minimal manual effort.
+**Excel**
+> Choose **either** `sheet_id` or `sheet_name`.
+
+Accepted parameters for `load()`:
+- `sheet_id`: 0, 1, 2, ... (int)  
+- `sheet_name`: string  
+- `table_name`: string  
+- `has_header`: bool  
+
+---
+
+**JSON**
+No additional parameters.
+
+---
+
+**Parquet**
+No additional parameters.
+
+---
+
+**XML**
+No additional parameters.
+
+
+**Sources (for Python structure and exception handling syntax):**  
+- Python Software Foundation — *Defining Main Functions & Script Execution*: https://docs.python.org/3/library/__main__.html  
+- Python Software Foundation — *Errors and Exceptions*: https://docs.python.org/3/tutorial/errors.html
+
+### Example: Loading Data from a Database
+#### 📥 Loading Data
+In this case, the `Pipeline` constructor accepts a single parameter named **`db_url`**.  
+This parameter represents the SQLAlchemy database connection string and is intentionally
+named `db_url` (not `db_conn` or `connection_string`) to keep the API simple and consistent.
+
+When working with databases, the configuration is handled at initialization time.  
+However, the `load()` method takes a single parameter named **`table`**.
+
+This parameter represents the name of the table from which the data should be ingested
+and is intentionally named `table` (not `db_table` or `table_name`) to keep the API simple
+and consistent.
+
+> **Note:** All parameters are passed as **keyword arguments**.
+
+#### 🧬 Inferring Schema
+
+The infer() method requires a dataframe and optionally accepts a schema directory.
+
+**Accepted parameters:**
+- `data` *(required)*: Polars DataFrame
+- `schema_dir` *(optional)*: directory where schemas are stored or generated
+
+---
+
+#### 🪶 Downcasting Data
+
+The `downcast()` method **only requires** the dataframe.
+
+**Accepted parameters:**
+- `data` *(required)*: Polars DataFrame
+
+---
+example:
+```python
+from intelligent_reporting.pipeline import Pipeline
+
+def main():
+    db_url = "driver://user:passwd@host:port/db"
+    table = "table_name" 
+
+    pipeline = Pipeline(db_url=db_url)
+    raw = pipeline.run(table=table) # returns a polars.DataFrame
+
+    # do anything with the DataFrame
+    # print(data)
+
+    typed, schema = pipeline.infer(data=raw) # also supports schema_dir
+    # print(typed)
+
+    downcasted = pipeline.downcast(data=typed) # only supports data
+    # print(downcasted)
+
+if __name__ == "__main__":
+    main()
+```
