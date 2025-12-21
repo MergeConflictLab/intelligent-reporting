@@ -237,3 +237,116 @@ def main():
 if __name__ == "__main__":
     main()
 ```
+----------------------------------
+# 📊 Automated Data Profiling & Exploratory Analysis Module
+
+Once data is ingested, typed, and optimized, it flows into an automated EDA layer designed to deliver fast, consistent, and decision-ready insights with minimal human intervention.
+
+---
+
+##  Business Value
+
+This EDA system helps teams:
+
+- Reduce time spent on repetitive analysis
+- Standardize insights across datasets and projects
+- Quickly assess data quality and risks
+- Surface key relationships early (before modeling or reporting)
+- Produce artifacts that can be shared directly with stakeholders
+
+It enables faster data understanding without requiring deep domain expertise upfront.
+
+---
+## 🧱 EDA Modules Overview
+
+The EDA pipeline is composed of **independent modules** that can be run together or separately, depending on the use case.
+
+---
+
+### 🔹 Sampling
+
+Creates a **representative subset** of large datasets to:
+- Speed up analysis
+- Enable quick exploration
+- Preserve global data structure
+
+📤 **Output:** sampled dataset saved to disk
+
+---
+
+### 🔹 Data Summary & Quality Profiling
+
+Provides a **high-level understanding** of the dataset:
+- Dataset size and structure
+- Missing values and duplicates
+- Basic statistics and distributions
+- Detection of constant or low-information columns
+
+📤 **Output:** structured JSON summary
+
+---
+
+### 🔹 Automated Visual Analysis
+
+Automatically generates **clear, presentation-ready charts**:
+- Numeric and categorical distributions
+- Time trends (when applicable)
+- Outlier and imbalance detection
+
+Visuals are generated using **safe defaults**, avoiding noise and over-plotting.
+
+📤 **Output:** PNG figures ready for reports or dashboards
+
+---
+
+### 🔹 Correlation & Relationship Analysis
+
+Identifies **meaningful relationships** between variables:
+- Highlights strong correlations
+- Filters out invalid or misleading signals
+- Helps guide feature selection and business hypotheses
+
+📤 **Output:** correlation heatmaps and relationship plots
+
+
+- Internal logging using Python’s `logging` module
+- `NullHandler` by default (safe for libraries)
+- Caller can enable logging centrally
+- Informative lifecycle messages per module
+
+---
+
+## 🚀 Example Usage
+
+```python
+from intelligent_reporting.pipeline import Pipeline
+from intelligent_reporting.profiling import *
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+logging.getLogger(__name__).info("Profiling pipeline started")
+
+file = "data/samples.csv"
+pipeline = Pipeline(file=file)
+raw = pipeline.load()  # returns a polars.DataFrame
+
+typed, schema = pipeline.infer(data=raw) # also supports schema_dir
+
+downcasted = pipeline.downcast(data=typed) # only supports data
+
+RESULTS_DIR = "results"
+FIGURES_DIR = "figures"
+MAX_ROWS = 5
+
+sampler = DataSampler(df=downcasted, max_rows=MAX_ROWS, sample_dir = RESULTS_DIR)
+summarizer = DataSummarizer(df=downcasted, summary_dir= RESULTS_DIR, figures_dir= FIGURES_DIR)
+visualizer = DataVisualizer(df=downcasted, summary_dir= RESULTS_DIR, figures_dir= FIGURES_DIR, top_k_categories=5)
+correlater = DataCorrelater(df=downcasted)
+
+sample = sampler.run_sample()
+summary = summarizer.summary()
+visualizer.run_viz()
+correlater.run()
