@@ -137,7 +137,7 @@ results/
 *.csv
 *.xlsx
 *.xls
-main.py
+#main.py
 script.py
 code/
 schema/
@@ -152,3 +152,4 @@ results/
 *.xls
 *.json
 generated_tasks.ipynb
+models/

@@ -1,83 +1,84 @@
 import json
-from typing import Dict, List, Any
-
-from langchain_ollama import ChatOllama
-from langchain.messages import HumanMessage, SystemMessage
-from langchain_openai import AzureChatOpenAI
-from dotenv_vault import load_dotenv
 import os
+from typing import Any, Dict, List
 
-load_dotenv()
+from langchain.messages import HumanMessage, SystemMessage
 
+from .base_agent import Agent
 from scripts.utils import json_fix, strip_code_fence
 
-
-JSON_SCHEMA_TEMPLATE = """[
-{{
-    "insight": "insight",
-    "reasoning": "why it matters",
-    "evidence": "specific numbers or image details"
-}}
-]"""
+# IF IT IS ENDURABLE THEN ENDURE IT. STOP COMPLAINING - MARCUS AURELIUS IN MEDITATIONS
 
 
-def insights_query(
-    img: str,
-    summary_data: Dict[str, Any],
-    sample_data: List[Dict[str, Any]],
-    description: str,
-    story_mode: bool = False,
-) -> Any:
-
-    llm = AzureChatOpenAI(
-         azure_deployment="gpt-5-nano",  # The name you gave the model in Azure AI Studio
-         api_version="2024-12-01-preview",           # Check Azure for your specific version
-         azure_endpoint= os.getenv("AZURE_ENDPOINT"),
-         api_key=os.getenv("API_KEY"),
-    
-)
-    
-
-    system_prompt = (
-        "You are a senior data analyst and storytelling master. "
-        "Extract concise, high-value insights and tell detailed stories suitable"
-        "for both technical and non-technical audiences using: "
-        "1) the dataset summary, 2) the metadata description, and 3) the provided image. "
-        "Respond only with valid JSON. "
-        "The JSON must be an array of objects with: "
-        '"insight", "reasoning", "evidence".'
-    )
-
-    instruction = (
-        "Use the data summary, metadata, and image to produce one high valuable insight."
-        if story_mode
-        else "Use the data summary, description, and image to produce insights."
-    )
-    user_prompt = f"""
-        {instruction}
-        Respond strictly in this JSON format:
-        {JSON_SCHEMA_TEMPLATE}
-        context:
-        Data_Summary: {json.dumps(summary_data)}
-        Data_Sample: {json.dumps(sample_data)}
-        High_Level_Description: {json.dumps(description)}
+class InsightsAgent(Agent):
+    """
+    Agent responsible for generating insights from plots using Ollama Qwen-VL.
     """
 
-    messages = [
-        SystemMessage(content=system_prompt),
-        HumanMessage(
+    def run(
+        self,
+        img: str,
+        summary_data: Dict,
+        sample_data: List[Dict],
+        description: Dict,
+        offline_mode: bool = False,
+    ) -> Any:
+        """Run a prompt through Ollama Qwen-VL using LangChain integration or Fallback LLM."""
+        print(f"[{self.__class__.__name__}] Starting execution...")
+
+        if offline_mode:
+            from langchain_ollama import ChatOllama
+
+            llm = ChatOllama(model="qwen3-vl:4b")
+        else:
+            from langchain_openai.chat_models.azure import AzureChatOpenAI
+
+            llm = AzureChatOpenAI(
+                azure_deployment="gpt-5-nano",
+                api_version="2024-12-01-preview",
+                azure_endpoint=os.getenv("AZURE_ENDPOINT"),
+                api_key=os.getenv("API_KEY"),
+            )
+
+        system_message = SystemMessage(
+            content="""
+You are a Data Science expert.
+Analyze the provided plot and the metadata.
+Provide a concise, high-level insight in JSON format.
+The keys should be:
+- 'observation': What does the plot show?
+- 'insight': What does it mean for the business?
+- 'actionable': What should be done next?
+"""
+        )
+
+        human_message = HumanMessage(
             content=[
-                {"type": "text", "text": user_prompt},
+                {
+                    "type": "text",
+                    "text": f"""
+Dataset Summary: {json.dumps(summary_data)}
+Sample Data: {json.dumps(sample_data)}
+Task Description: {json.dumps(description)}
+""",
+                },
                 {
                     "type": "image_url",
                     "image_url": {"url": f"data:image/png;base64,{img}"},
                 },
             ]
-        ),
-    ]
+        )
 
-    try:
-        response = llm.invoke(messages)
-        return json_fix(response.content)
-    except Exception as e:
-        raise Exception(f"Failed to generate insights: {str(e)}") from e
+        try:
+            response = llm.invoke([system_message, human_message])
+            content = strip_code_fence(response.content)
+            parsed = json_fix(content)
+
+            print(f"[{self.__class__.__name__}] Execution completed successfully.")
+            print(f"[{self.__class__.__name__}] Output: {json.dumps(parsed, indent=2)}")
+
+            return parsed
+
+        except Exception as e:
+            print(f"[{self.__class__.__name__}] Error: {str(e)}")
+            raise RuntimeError(f"Failed to generate insight with Ollama: {str(e)}")
