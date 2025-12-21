@@ -1,20 +1,119 @@
 import json
 import os
 import time
+
 import nbformat as nbf
-from intelligent_reporting.agents.metadata_agent import metadata_query
-from intelligent_reporting.agents.supervisor_agent import supervisor_query
-from intelligent_reporting.agents.assistant_agent import assistant_query
-from sandbox.sandbox import run_in_docker_sandbox
-from intelligent_reporting.loading.CSVLoader import CSVLoader
+from dotenv_vault import load_dotenv
+
+from intelligent_reporting.agents.agent_factory import AgentFactory, AgentType
 from intelligent_reporting.custom_typing.schemaInfererFlatFiles import (
     SchemaInfererFlatFiles,
 )
+from intelligent_reporting.orchestrator.data_pipeline_selector import (
+    DataPipelineSelector,
+)
 from intelligent_reporting.profiling.DataSampler import DataSampler
-from intelligent_reporting.agents.insights_agent import insights_query
-from scripts.utils import json_fix, strip_code_fence
-from scripts.utils import encode_image
-from dotenv_vault import load_dotenv
+from sandbox.sandbox import run_in_docker_sandbox
+from scripts.utils import encode_image, json_fix, strip_code_fence
+
+
+def process_task(task, file_path, data_dir, response, sample_data, offline_mode):
+    """
+    Process a single task: Generate code, run in sandbox, generate insights.
+    Returns a dictionary with 'cells' (notebook cells) and 'insight' (insight dict).
+    """
+    task_name = task.get("name", "unnamed_task")
+    sandbox_path = "/sandbox/data/" + os.path.basename(file_path)
+
+    local_cells = []
+    local_insight = None
+
+    # 1. Generate Code (Assistant Agent)
+    assistant_agent = AgentFactory.get_agent(AgentType.ASSISTANT)
+    assistant_out = assistant_agent.run(
+        supervisor_response=task,
+        path=sandbox_path,
+        offline_mode=offline_mode,
+    )
+
+    try:
+        assistant_json = json_fix(assistant_out)
+    except Exception:
+        assistant_json = assistant_out
+
+    if isinstance(assistant_json, dict) and "code" in assistant_json:
+        raw_code = assistant_json["code"]
+    else:
+        raw_code = assistant_out  # fallback
+
+    code = strip_code_fence(raw_code)
+    # Update task name if assistant provided a better one
+    task_name = (
+        assistant_json.get("name", task_name)
+        if isinstance(assistant_json, dict)
+        else task_name
+    )
+
+    local_cells.append(nbf.v4.new_markdown_cell(f"## Task: {task_name}"))
+    local_cells.append(nbf.v4.new_code_cell(code))
+
+    result = run_in_docker_sandbox(code=code, data_dir=data_dir, name=task_name)
+
+    if result["stdout"].strip():
+        local_cells.append(
+            nbf.v4.new_markdown_cell("### Output\n\n" + result["stdout"] + "\n\n")
+        )
+    if result["stderr"].strip():
+        local_cells.append(
+            nbf.v4.new_markdown_cell("### Errors\n\n" + result["stderr"] + "\n\n")
+        )
+
+    # 3. Generate Insights (Insights Agent)
+    for artifact in result["artifacts"]:
+        fname = os.path.basename(artifact)
+        if fname.lower().endswith((".png", ".jpg")):
+            rel_path = os.path.relpath(artifact, os.getcwd())
+            local_cells.append(nbf.v4.new_markdown_cell(f"### Plot\n![]({rel_path})"))
+        else:
+            with open(artifact, encoding="utf-8") as f:
+                local_cells.append(
+                    nbf.v4.new_markdown_cell(f"### Artifact: {fname}\n\n{f.read()}\n\n")
+                )
+
+        img_path = os.path.join("sandbox/output", fname)
+        encoded_image = encode_image(img_path)
+
+        try:
+            insights_agent = AgentFactory.get_agent(AgentType.INSIGHTS)
+            insight = insights_agent.run(
+                img=encoded_image,
+                summary_data=response,
+                sample_data=sample_data,
+                description=task,
+                offline_mode=offline_mode,
+            )
+            local_insight = insight
+
+            try:
+                ins_text = json.dumps(insight, ensure_ascii=False, indent=2)
+            except TypeError:
+                ins_text = str(insight)
+
+            local_cells.append(
+                nbf.v4.new_markdown_cell(
+                    f"### Insight for {task_name}\n\n{ins_text}\n\n"
+                )
+            )
+        except Exception as e:
+            print(f"Failed to generate insight for {task_name}: {e}")
+            local_cells.append(
+                nbf.v4.new_markdown_cell(
+                    f"### Insight for {task_name} (FAILED)\n\nError: {e}\n\n"
+                )
+            )
+            local_insight = {"error": str(e)}
+
+    return {"cells": local_cells, "insight": local_insight}
 
 
 def agents_pipeline(file_path: str, offline_mode: bool = False) -> list:
@@ -22,8 +121,8 @@ def agents_pipeline(file_path: str, offline_mode: bool = False) -> list:
     # Extract data directory for sandbox mounting
     data_dir = os.path.dirname(file_path) if os.path.dirname(file_path) else "data"
 
-    loader = CSVLoader()
-    df = loader.load(file_path=file_path)
+    loader = DataPipelineSelector(file=file_path).select_loader_inferer()[0]()
+    df = loader.load(file_path)
 
     schema_inferer = SchemaInfererFlatFiles()
     df, schema = schema_inferer.infer_schema(df)
@@ -31,11 +130,11 @@ def agents_pipeline(file_path: str, offline_mode: bool = False) -> list:
     description = schema.get("columns", {})
 
     # Sample data using DataSampler
-    sampler = DataSampler(df=df, max_rows=100, output_path="sample_data.json")
+    sampler = DataSampler(df=df, max_rows=200, output_path="sample_data.json")
     sample_data = sampler.run_sample()
 
-    raw_response = metadata_query(
-        # model="deepseek-v3.1:671b-cloud",
+    metadata_agent = AgentFactory.get_agent(AgentType.METADATA)
+    raw_response = metadata_agent.run(
         sample_data=sample_data,
         schema=schema,
         description=description,
@@ -60,143 +159,77 @@ def agents_pipeline(file_path: str, offline_mode: bool = False) -> list:
     else:
         supervisor_description = [response]
 
-    output = supervisor_query(
+    supervisor_agent = AgentFactory.get_agent(AgentType.SUPERVISOR)
+    output = supervisor_agent.run(
         description=supervisor_description,
-        # model="deepseek-v3.1:671b-cloud",
         sample_data=sample_data,
         offline_mode=offline_mode,
     )
 
-    parsed_output = json_fix(output)
+    parsed_output = output
+
     with open("output.json", "w", encoding="utf-8") as f:
         if isinstance(parsed_output, (list, dict)):
             json.dump(parsed_output, f, ensure_ascii=False, indent=2)
         else:
             f.write(strip_code_fence(str(output)))
 
-    print("Parsing supervisor output...")
-    print(parsed_output)
-    if isinstance(parsed_output, (list, dict)):
-        tasks = (
-            parsed_output
-            if isinstance(parsed_output, dict)
-            else {"tasks": parsed_output}
-        )
-        if isinstance(tasks, list):
-            tasks = {"tasks": tasks}
-        elif isinstance(tasks, dict) and "tasks" not in tasks:
-            tasks = {"tasks": [tasks]}
+    if isinstance(parsed_output, dict):
+        tasks_list = parsed_output.get("tasks", [])
+    elif isinstance(parsed_output, list):
+        tasks_list = parsed_output
     else:
-        try:
-            with open("output.json", "r", encoding="utf-8") as f:
-                tasks = json.load(f)
-        except Exception:
-            tasks = {"tasks": []}
+        tasks_list = []
+
+    print(f"Found {len(tasks_list)} tasks to execute.")
 
     nb = nbf.v4.new_notebook()
-    cells = []
-    insights = []
-    print(f"Found {len(tasks.get('tasks', []))} tasks to execute.")
-    for task in tasks.get("tasks", []):
-        task_name = task.get("name", "unnamed_task")
-        sandbox_path = "/sandbox/data/" + os.path.basename(file_path)
+    all_cells = []
+    all_insights = []
 
-        assistant_out = assistant_query(
-            # model="deepseek-v3.1:671b-cloud",
-            supervisor_response=task,
-            path=sandbox_path,
-            offline_mode=offline_mode,
-        )
+    # Sequential Execution
+    print("Starting sequential execution of tasks...")
 
+    for task in tasks_list:
         try:
-            assistant_json = json_fix(assistant_out)
-        except Exception:
-            assistant_json = assistant_out
-
-        if isinstance(assistant_json, dict) and "code" in assistant_json:
-            raw_code = assistant_json["code"]
-        else:
-            raw_code = assistant_out  # fallback
-
-        code = strip_code_fence(raw_code)
-        task_name = assistant_json.get("name", [])
-
-        print(f"--- RUNNING TASK: {task_name} ---")
-        print(code)
-
-        result = run_in_docker_sandbox(name=task_name, code=code, data_dir=data_dir)
-        print(result)
-
-        cells.append(nbf.v4.new_markdown_cell(f"## Task: {task_name}"))
-        cells.append(nbf.v4.new_code_cell(code))
-
-        if result["stdout"].strip():
-            cells.append(
-                nbf.v4.new_markdown_cell(
-                    "### Output\n⁠\n\n" + result["stdout"] + "\n\n\n"
-                )
+            result = process_task(
+                task,
+                file_path,
+                data_dir,
+                response,
+                sample_data,
+                offline_mode,
             )
-        if result["stderr"].strip():
-            cells.append(
+            all_cells.extend(result["cells"])
+            if result["insight"]:
+                all_insights.append(result["insight"])
+            print(f"Task '{task.get('name')}' completed successfully.")
+        except Exception as exc:
+            task_name = task.get("name", "unknown")
+            print(f"Task '{task_name}' generated an exception: {exc}")
+            all_cells.append(
                 nbf.v4.new_markdown_cell(
-                    "### Errors\n⁠\n\n" + result["stderr"] + "\n\n\n"
+                    f"## Task: {task_name} (FAILED)\n\nError: {exc}"
                 )
             )
 
-        for artifact in result["artifacts"]:
-            fname = os.path.basename(artifact)
-            if fname.lower().endswith((".png", ".jpg")):
-                rel_path = os.path.relpath(artifact, os.getcwd())
-                cells.append(nbf.v4.new_markdown_cell(f"### Plot\n![]({rel_path})"))
-            else:
-                with open(artifact, encoding="utf-8") as f:
-                    cells.append(
-                        nbf.v4.new_markdown_cell(
-                            f"### Artifact: {fname}\n⁠\n\n{f.read()}\n\n\n"
-                        )
-                    )
-
-            print("Generating insight for ", task["name"])
-            file_name = os.path.basename(artifact)
-            img_path = os.path.join("sandbox/output", file_name)
-            encoded_image = encode_image(img_path)
-
-            insight = insights_query(
-                img=encoded_image,
-                summary_data=response,
-                sample_data=sample_data,
-                description=task,
-                offline_mode=offline_mode,
-                # api_key=os.getenv("API_KEY"),
-                # azure_endpoint=os.getenv("AZURE_ENDPOINT"),
-            )
-            insights.append(insight)
-
-            try:
-                ins_text = json.dumps(insight, ensure_ascii=False, indent=2)
-            except TypeError:
-                ins_text = str(insight)
-
-            cells.append(
-                nbf.v4.new_markdown_cell(
-                    f"### Insight for {task['name']}\n⁠\n\n{ins_text}\n\n\n"
-                )
-            )
-            time.sleep(5)
-
-    nb["cells"] = cells
+    nb["cells"] = all_cells
 
     with open("generated_tasks.ipynb", "w", encoding="utf-8") as f:
         nbf.write(nb, f)
     with open("insights.json", "w", encoding="utf-8") as f:
-        json.dump(insights, f)
+        json.dump(all_insights, f)
 
     print("Notebook 'generated_tasks.ipynb' created successfully.")
-    return insights
+    return all_insights
 
 
 if __name__ == "__main__":
+    # Time the pipeline
+    start_time = time.time()
     insights = agents_pipeline(
-        file_path="data/cleaned_salad_data.csv", offline_mode=False
+        file_path="data/cleaned_salad_data.csv", offline_mode=True
     )
+    end_time = time.time()
+    print(f"Pipeline execution time: {end_time - start_time:.2f} seconds")
     print(insights)
