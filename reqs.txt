@@ -1,7 +1,6 @@
 polars
-numpy
-sqlalchemy
 pyarrow
+numpy
 scipy
 scikit-learn
 matplotlib
