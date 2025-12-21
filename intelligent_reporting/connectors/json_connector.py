@@ -5,6 +5,10 @@ import json
 from ..expection import *
 import os
 
+import logging
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
 @register_file([".json", 'jsonl'])
 class JsonConnector(BaseConnector):
     def __init__(self, path: str):
@@ -15,6 +19,7 @@ class JsonConnector(BaseConnector):
         self.__rebuild_data_structure={}
         self.__ind=0
         self.__special_separator="###"
+        self.allowed_options = {}
         
         
     def _help_deep_smart_flatten_json(self, data, new_key):
@@ -87,7 +92,7 @@ class JsonConnector(BaseConnector):
                 json.load(f)
         except json.JSONDecodeError as e:
             raise DataLoadingError(
-                f"Invalid JSON content in file: {self.path}"
+                f"Invalid JSON content in file: {self.path}: {e}"
             ) from e
 
         # full read
@@ -96,5 +101,5 @@ class JsonConnector(BaseConnector):
             return self._deep_smart_flatten_json(df)
         except Exception as e:
             raise DataLoadingError(
-                f"Failed to fully load JSON file: {self.path}"
+                f"Failed to fully load JSON file: {self.path}: {e}"
             ) from e

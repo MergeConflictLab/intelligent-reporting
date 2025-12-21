@@ -5,6 +5,10 @@ from .registry import register_file
 from ..expection import *
 import os
 
+import logging
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
 @register_file(["xml"])
 class XmlConnector(BaseConnector):
     def __init__(self, path: str):

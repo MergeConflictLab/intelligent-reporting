@@ -4,10 +4,15 @@ from .registry import register_file
 from ..expection import *
 import os
 
+import logging
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
 @register_file([".xls", ".xlsx"])
 class ExcelConnector(BaseConnector):
     def __init__(self, *, path: str):
         self.path = path
+        self.allowed_options = {"sheet_id", "sheet_name", "table_name", "has_header"}
 
 
     def _load_all_sheets_with_schema_check(
@@ -29,6 +34,8 @@ class ExcelConnector(BaseConnector):
             raise DataLoadingError(
                 f"Failed to read Excel sheets from {self.path}"
             ) from e
+        if isinstance(sheets, pl.DataFrame):
+            return sheets
 
         if not isinstance(sheets, dict) or not sheets:
             raise DataLoadingError(
@@ -63,27 +70,78 @@ class ExcelConnector(BaseConnector):
 
     def load(self, **options):
         """
-        Read the excel file with polars, Caller can override sheet_id/sheet_name/table_name/has_header
-        by passing them in options
+        Read an Excel file using Polars.
+
+        The loader first performs a lightweight preview read to validate:
+        - file existence
+        - sheet accessibility
+        - non-empty structure
+
+        Then it performs the full load.
         """
+        logger.info("Excel loader initialized | path=%s", self.path)
+
         if not os.path.exists(self.path):
-            raise DataLoadingError(
-                f"File not found: {self.path}"
+            raise DataLoadingError(f"File not found: {self.path}")
+
+        # ---- configuration validation ----
+        allowed_keys = {"sheet_id", "sheet_name", "table_name", "has_header"}
+        for key in options:
+            if key not in allowed_keys:
+                raise ConfigurationError(
+                    f"For {self.__class__.__name__}, expected parameters are "
+                    f"{sorted(allowed_keys)} but got '{key}'"
+                )
+
+        # ---- parameter resolution + logging ----
+        sheet_id = options.get("sheet_id", 1)
+        if sheet_id < 0:
+            raise ConfigurationError(f"sheet_id must be a positive integer. But got {sheet_id}")
+        sheet_name = options.get("sheet_name")
+        table_name = options.get("table_name")
+        has_header = options.get("has_header")
+
+        if "sheet_id" in options:
+            logger.info("Excel loader | user-provided parameter: sheet_id=%s", sheet_id)
+        else:
+            logger.info("Excel loader | default parameter: sheet_id=%s", sheet_id)
+
+        if "sheet_name" in options:
+            logger.info("Excel loader | user-provided parameter: sheet_name=%s", sheet_name)
+
+        if "table_name" in options:
+            logger.info("Excel loader | user-provided parameter: table_name=%s", table_name)
+
+        if "has_header" in options:
+            logger.info("Excel loader | user-provided parameter: has_header=%s", has_header)
+
+        # ---- special case: ALL sheets ----
+        if sheet_id == 0:
+            logger.info(
+                "Excel loader | loading all sheets (sheet_id=0) with schema consistency check"
             )
-        
-        sheet_id = options["sheet_id"] if "sheet_id" in options.keys() else 1
-        sheet_name = options["sheet_name"] if "sheet_name" in options.keys() else None
-        table_name = options["table_name"] if "table_name" in options.keys() else None
-        has_header = options["has_header"] if "has_header" in options.keys() else None
-        preview_df = None
+            return self._load_all_sheets_with_schema_check(
+                has_header=has_header,
+                infer_schema_length=50,
+                engine="calamine",
+            )
+
+        # ---- phase 1: preview read (validation only) ----
         try:
+            logger.debug(
+                "Excel loader | preview read | sheet_id=%s sheet_name=%s table_name=%s",
+                sheet_id,
+                sheet_name,
+                table_name,
+            )
             preview_df = pl.read_excel(
                 source=self.path,
                 sheet_id=sheet_id,
                 sheet_name=sheet_name,
                 table_name=table_name,
                 has_header=has_header,
-                infer_schema_length=0,
+                infer_schema_length=50,
+                raise_if_empty=False,
             )
             if preview_df.width == 0:
                 raise EmptyDatasetError(
@@ -94,21 +152,24 @@ class ExcelConnector(BaseConnector):
                 raise EmptyDatasetError(
                     f"Excel sheet contains no rows: {self.path}"
                 )
+        except EmptyDatasetError:
+            raise
         except Exception as e:
             raise DataLoadingError(
                 f"Failed to open Excel file or sheet: {self.path} "
-                f"(sheet_id={sheet_id}, sheet_name={sheet_name})"
+                f"(sheet_id={sheet_id}, sheet_name={sheet_name}): {e}"
             ) from e
 
-        # special case: sheet_id == 0 then ALL sheets
-        if sheet_id == 0:
-            return self._load_all_sheets_with_schema_check(
-                has_header=has_header,
-                infer_schema_length=50,
-            )
         
-         # normal single-sheet load
+
+        # ---- phase 2: full load ----
         try:
+            logger.info(
+                "Excel loader | performing full load | sheet_id=%s sheet_name=%s table_name=%s",
+                sheet_id,
+                sheet_name,
+                table_name,
+            )
             return pl.read_excel(
                 source=self.path,
                 sheet_id=sheet_id,
@@ -120,5 +181,5 @@ class ExcelConnector(BaseConnector):
             )
         except Exception as e:
             raise DataLoadingError(
-                f"Failed to fully load Excel file: {self.path}"
+                f"Failed to fully load Excel file: {self.path}: {e}"
             ) from e

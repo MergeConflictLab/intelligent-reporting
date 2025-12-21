@@ -54,6 +54,11 @@ class Selector:
 
     def _run_file_mode(self, **options) -> pl.DataFrame:
         loader = registry.get_file_connector(self.file)
+        invalid = set(options) - set(loader.allowed_options)
+        if invalid:
+            raise ConfigurationError(
+                f"{loader.__class__.__name__} does not support options: {sorted(invalid)}"
+            )
         return loader.load(**options)
     
 
