@@ -8,12 +8,17 @@ from .registry import register_file
 from ..expection import *
 import os
 
+import logging
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
 @register_file([".csv", ".tsv", ".txt"])
 class CSVConnector(BaseConnector):
 
     def __init__(self, path: str):
         self.params = {}
         self.path = path
+        self.allowed_options = {"has_header", "quote_char", "encoding"}
 
     def _detect_header(self):
         """
@@ -182,13 +187,12 @@ class CSVConnector(BaseConnector):
         """
         Load the CSVConnector instance into a Polars DataFrame object
         """
+        logger.info("Loader initialized | path=%s", self.path)
+
         if not os.path.exists(self.path):
-            raise DataLoadingError(
-                f"File not found: {self.path}"
-            )
+            raise DataLoadingError(f"File not found: {self.path}")
 
         try:
-            # Try to read only a small sample first
             df = pl.read_csv(
                 self.path,
                 n_rows=10,
@@ -200,37 +204,73 @@ class CSVConnector(BaseConnector):
             ) from e
 
         if df.width == 0:
-            raise EmptyDatasetError(
-                f"CSV file has no columns: {self.path}"
-            )
+            raise EmptyDatasetError(f"CSV file has no columns: {self.path}")
 
         if df.height == 0:
-            raise EmptyDatasetError(
-                f"CSV file contains no rows: {self.path}"
-            )
+            raise EmptyDatasetError(f"CSV file contains no rows: {self.path}")
+
+        # --- CONFIG VALIDATION (must NOT be swallowed) ---
+        allowed_keys = {"has_header", "quote_char", "encoding"}
+        for key in options:
+            if key not in allowed_keys:
+                raise ConfigurationError(
+                    f"For {self.__class__.__name__}, expected parameters are "
+                    f"{sorted(allowed_keys)} but got '{key}'"
+                )
 
         try:
             has_header = self._detect_header()
             delimiter = self._detect_delimiter()
 
-            if "has_header" not in options.keys() and has_header is not None:
+            if "has_header" not in options and has_header is not None:
                 options["has_header"] = has_header
+                logger.info(
+                    "auto-detected parameter: has_header=%s",
+                    has_header,
+                )
+            elif "has_header" in options:
+                logger.info(
+                    "user-provided parameter: has_header=%s",
+                    options["has_header"],
+                )
 
-            if "seperator" not in options.keys():
-                options["separator"] = delimiter
-            
-            options["infer_schema_length"]=0
 
-            # detect quotes
+            options["separator"] = delimiter
+            logger.info(
+                "auto-detected parameter: separator='%s'",
+                delimiter,
+            )
+            options["infer_schema_length"] = 0
+            logger.debug(
+                "internal parameter set: infer_schema_length=0",
+            )
+
             quote = self._detect_quotes()
-            if "quote_char" not in options.keys():
+            if "quote_char" not in options:
                 options["quote_char"] = quote
+                logger.info(
+                    "auto-detected parameter: quote_char='%s'",
+                    quote,
+                )
+            else:
+                logger.info(
+                    "user-provided parameter: quote_char='%s'",
+                    options["quote_char"],
+                )
 
-            # actually load the file with the parameters given
+            if "encoding" in options:
+                logger.info(
+                    "CSV loader | user-provided parameter: encoding='%s'",
+                    options["encoding"],
+                )
+
             df = pl.read_csv(self.path, **options)
             df = self._detect_null_likes(df=df)
             return df
-        
+
+        except ConfigurationError:
+            raise
+
         except Exception as e:
             raise DataLoadingError(
                 f"Failed to fully load CSV file: {self.path}"

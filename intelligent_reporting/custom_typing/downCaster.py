@@ -1,4 +1,9 @@
 import polars as pl
+
+import logging
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
 class DownCaster :
     """This class should be responsible of downcasting type columns of a pl.DataFrame object"""
 

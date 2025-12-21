@@ -5,11 +5,16 @@ from .registry import register_file
 from ..expection import *
 import os
 
+import logging
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
 @register_file([".parquet", ".pq"])
 class ParquetConnector(BaseConnector):
     def __init__(self, path: str):
         self.nulls = {}
         self.path = path
+        self.allowed_options = {}
 
     def _standerdize_null_likes(self, *, df: pl.DataFrame):
         NULL_LIKES = {

@@ -12,6 +12,11 @@ from sqlalchemy.exc import (
     IntegrityError,
     DBAPIError,
 )
+
+import logging
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
 @register_db
 class SQLConnector(BaseConnector):
     def __init__(self, *, db_url: str = None):

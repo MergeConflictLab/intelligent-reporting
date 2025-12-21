@@ -125,7 +125,7 @@ from intelligent_reporting.pipeline import Pipeline
 def main():
     file = "data/samples.csv"
     pipeline = Pipeline(file=file)
-    data = pipeline.load()  # returns a polars.DataFrame
+    raw = pipeline.load()  # returns a polars.DataFrame
 
     # do anything with the DataFrame
     # print(data)
@@ -147,7 +147,7 @@ if __name__ == "__main__":
 
 Accepted parameters for `load()`:
 - `has_header`: bool  
-- `separator`: string  
+- `quote_char`: string  
 - `encoding`: string  
 
 ---
