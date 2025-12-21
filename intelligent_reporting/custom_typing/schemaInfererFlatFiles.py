@@ -4,6 +4,10 @@ from datetime import datetime
 import os
 import json
 
+import logging
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
 @register_file_schema_inferer
 class SchemaInfererFlatFiles():
     """This class should be responsible of infering the pl.DataFrame object's schema, apply it and generate the schema report."""
@@ -20,7 +24,14 @@ class SchemaInfererFlatFiles():
         s = series.drop_nulls()
         total = len(s)
         if total == 0:
-           return "No data"
+           return {
+                "int": 0.0,
+                "float": 0.0,
+                "datetime": 0.0,
+                "boolean": 0.0,
+                "category": 0.0,
+                "string": 1.0,
+            }
         def is_integer_dtype(dtype) -> bool:
             return dtype in [pl.Int8, pl.Int16, pl.Int32, pl.Int64]
 
@@ -191,7 +202,7 @@ class SchemaInfererFlatFiles():
 
         # category based on unique-ratio (separately computed)
         if ratios["category"] >= THRESH_CATEGORY:
-            return "Category", ratios["category"] / (ratios["category"] + ratios["string"])
+            return "Category", ratios["category"]# / (ratios["category"] + ratios["string"])
 
         # fallback
         return "String", ratios["string"]

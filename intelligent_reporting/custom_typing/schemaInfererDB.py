@@ -4,6 +4,10 @@ import os
 from datetime import datetime
 import json
 
+import logging
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
 @register_db_schema_inferer
 class SchemaInfererDB:
     def __init__(self):
