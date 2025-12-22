@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pydantic
+llama-cpp-python
+python-dotenv
+langchain
+langchain-ollama
+langchain-openai
+huggingface-hub
