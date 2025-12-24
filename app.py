@@ -127,7 +127,7 @@ STILL_PROCESSING = False
 def upload_files():
     global STILL_PROCESSING
     if(STILL_PROCESSING):
-       return
+       return jsonify({"message": "Plots still processed"}), 200
     STILL_PROCESSING = True
     if 'myFile' not in request.files:
         return 'No file part', 400
@@ -193,7 +193,6 @@ def sendPdfViaEmail():
     data = request.get_json()
     email = data.get("email").strip()
     pageLink = data.get("pageLink")
-    print(email, pageLink)
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
