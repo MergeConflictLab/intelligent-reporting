@@ -9,8 +9,10 @@ from ..expection import *
 import os
 
 import logging
+
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
+
 
 @register_file([".csv", ".tsv", ".txt"])
 class CSVConnector(BaseConnector):
@@ -22,19 +24,26 @@ class CSVConnector(BaseConnector):
 
     def _detect_header(self):
         """
-            Say whether a text file has a header row,
-            I can consider that a row is header if:
-            1. it has no nulls (or null_likes)
-            2. if the values are all unique
-            3. if the number of in second and third are > number of nmerics in first
-            4. if the values are like identifiers
-            5. if it contains numbers, then all should be numbers and in ascending order
+        Say whether a text file has a header row,
+        I can consider that a row is header if:
+        1. it has no nulls (or null_likes)
+        2. if the values are all unique
+        3. if the number of in second and third are > number of nmerics in first
+        4. if the values are like identifiers
+        5. if it contains numbers, then all should be numbers and in ascending order
         """
         try:
-            sample = pl.read_csv(self.path, has_header=False, infer_schema_length=0,ignore_errors=True ,n_rows=2)
+            sample = pl.read_csv(
+                self.path,
+                has_header=False,
+                infer_schema_length=0,
+                ignore_errors=True,
+                n_rows=2,
+            )
             first_row = sample.row(0)
             second_row = sample.row(1) if sample.height > 1 else []
             third_row = sample.row(2) if sample.height > 2 else []
+
             # helpers
             def is_number(v):
                 if isinstance(v, (bool, np.bool_)):
@@ -45,17 +54,17 @@ class CSVConnector(BaseConnector):
                     return str(v).replace(".", "", 1).isdigit()
                 except Exception:
                     return False
-                
+
             def is_identifier_like(v: object):
                 if not isinstance(v, str):
                     return False
                 s = v.strip()
                 if not s:
                     return False
-                
+
                 if s == " ":
                     return False
-                
+
                 s_no_quotes = re.sub(r'^(["\'])(.*)\1$', r"\2", s)
                 clean = re.sub(r"[_\-\s]+", "", s_no_quotes)
 
@@ -69,59 +78,81 @@ class CSVConnector(BaseConnector):
                 # accept if most are alphabetic and no weird symbols
                 allowed_pattern = re.compile(r"^[A-Za-z0-9 _\-]+$")
                 return bool(alpha_ratio > 0.6 and bool(allowed_pattern.match(s)))
-            
+
             def _is_null_like(v: object):
                 NULL_LIKES = {
-                    " ", "null", "none", "nan", "n/a", "na", "#n/a", "#na", "--", "?", 
-                    "unknown", "missing", "#value!", "#ref!", "nil", "undefined", ".", "blank", "empty"
+                    " ",
+                    "null",
+                    "none",
+                    "nan",
+                    "n/a",
+                    "na",
+                    "#n/a",
+                    "#na",
+                    "--",
+                    "?",
+                    "unknown",
+                    "missing",
+                    "#value!",
+                    "#ref!",
+                    "nil",
+                    "undefined",
+                    ".",
+                    "blank",
+                    "empty",
                 }
-                if v is None or (isinstance(v, float) and math.isnan(v)) or v is pl.Null:
+                if (
+                    v is None
+                    or (isinstance(v, float) and math.isnan(v))
+                    or v is pl.Null
+                ):
                     return True
 
                 if isinstance(v, str):
                     v = v.strip().lower()
                     return v in NULL_LIKES
-            
+
                 return False
-            
+
             # 1 (need to keep one chance for the index if exists)
             has_nulls = sum(_is_null_like(v) for v in first_row) > 1
 
             # 2
-            uniqueness_ratio = (len(set(first_row)) / max(len(first_row), 1))
+            uniqueness_ratio = len(set(first_row)) / max(len(first_row), 1)
             mostly_unique = uniqueness_ratio > 0.9
-                        
+
             # 3
             first_num = sum(is_number(v) for v in first_row)
             second_num = sum(is_number(v) for v in second_row)
             third_num = sum(is_number(v) for v in third_row)
             dtype_shift = (
-                len(second_row) > 0 and 
-                first_num < second_num and 
-                (len(third_row) == 0 or second_num == third_num)
+                len(second_row) > 0
+                and first_num < second_num
+                and (len(third_row) == 0 or second_num == third_num)
             )
             # 4
-            
-            identifier_ratio = sum(is_identifier_like(v) for v in first_row) / len(first_row)
-            mostly_identifiers = identifier_ratio > 0.8            
-            # 5 
-            numeric_values = [float(v) for v in first_row if is_number(v)]
-            ascending_numbers = (
-                len(numeric_values) == len(first_row) and 
-                all(x < y for x, y in zip(numeric_values, numeric_values[1:]))
+
+            identifier_ratio = sum(is_identifier_like(v) for v in first_row) / len(
+                first_row
             )
-            
+            mostly_identifiers = identifier_ratio > 0.8
+            # 5
+            numeric_values = [float(v) for v in first_row if is_number(v)]
+            ascending_numbers = len(numeric_values) == len(first_row) and all(
+                x < y for x, y in zip(numeric_values, numeric_values[1:])
+            )
+
             is_header = (
-                not has_nulls and
-                mostly_unique and
-                (dtype_shift or mostly_identifiers or ascending_numbers)
+                not has_nulls
+                and mostly_unique
+                and (dtype_shift or mostly_identifiers or ascending_numbers)
             )
             return bool(is_header)
 
         except Exception as e:
             print(e)
             return None
-        
+
     def _detect_delimiter(self):
         """
         Detect what delimiter is used in the CSVConnector instance
@@ -134,15 +165,33 @@ class CSVConnector(BaseConnector):
             dialect = sniffer.sniff(sample)
             delimiter = dialect.delimiter
         return delimiter
-    
+
     def _detect_null_likes(self, df: pl.DataFrame):
         """
         A method to detect null likes and convert them to polars.none values
         """
         NULL_LIKES = {
-                    None, pl.Null," ", "", "null", "none", "nan", "n/a", "na", "#n/a", "#na", "--", "-", "?", 
-                    "unknown", "missing", "undefined", ".", "blank", "empty"
-                }
+            None,
+            pl.Null,
+            " ",
+            "",
+            "null",
+            "none",
+            "nan",
+            "n/a",
+            "na",
+            "#n/a",
+            "#na",
+            "--",
+            "-",
+            "?",
+            "unknown",
+            "missing",
+            "undefined",
+            ".",
+            "blank",
+            "empty",
+        }
 
         string_nulls = {str(v).lower() for v in NULL_LIKES if v is not None}
 
@@ -150,21 +199,17 @@ class CSVConnector(BaseConnector):
             col_data = df[column]
 
             # convert everything to str for comparison
-            col_as_str = (
-                col_data.cast(pl.Utf8)
-                .str.strip_chars()
-                .str.to_lowercase()
-            )
+            col_as_str = col_data.cast(pl.Utf8).str.strip_chars().str.to_lowercase()
 
             # build mask: match normalized string nulls OR real NaNs
             mask = col_as_str.is_in(string_nulls) | col_data.is_null()
-            
+
             df = df.with_columns(
                 pl.when(mask).then(None).otherwise(col_data).alias(column)
             )
 
         return df
-    
+
     def _detect_quotes(self):
         """
         Detect which quote is used in a CSVConnector instance
@@ -180,9 +225,9 @@ class CSVConnector(BaseConnector):
 
         if quote and quoting_mode is not csv.QUOTE_NONE:
             return quote
-        
+
         return False
-    
+
     def load(self, **options):
         """
         Load the CSVConnector instance into a Polars DataFrame object
@@ -199,9 +244,7 @@ class CSVConnector(BaseConnector):
                 infer_schema_length=0,
             )
         except Exception as e:
-            raise DataLoadingError(
-                f"Failed to read CSV file: {self.path}"
-            ) from e
+            raise DataLoadingError(f"Failed to read CSV file: {self.path}") from e
 
         if df.width == 0:
             raise EmptyDatasetError(f"CSV file has no columns: {self.path}")
@@ -234,7 +277,6 @@ class CSVConnector(BaseConnector):
                     options["has_header"],
                 )
 
-
             options["separator"] = delimiter
             logger.info(
                 "auto-detected parameter: separator='%s'",
@@ -264,6 +306,10 @@ class CSVConnector(BaseConnector):
                     options["encoding"],
                 )
 
+            # Re-applying robustness options (Essential for messy CSVs)
+            options["truncate_ragged_lines"] = True
+            options["ignore_errors"] = True
+
             df = pl.read_csv(self.path, **options)
             df = self._detect_null_likes(df=df)
             return df
@@ -272,6 +318,4 @@ class CSVConnector(BaseConnector):
             raise
 
         except Exception as e:
-            raise DataLoadingError(
-                f"Failed to fully load CSV file: {self.path}"
-            ) from e
+            raise DataLoadingError(f"Failed to fully load CSV file: {self.path}") from e

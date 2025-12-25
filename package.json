@@ -1,0 +1,26 @@
+{
+  "name": "intelligent-reporting",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "concurrently -n \"next,py\" -c \"cyan.bold,green.bold\" \"npm --prefix frontend run dev\" \"python scripts/sidecar.py\"",
+    "install-all": "npm install && npm --prefix frontend install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MergeConflictLab/intelligent-reporting.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/MergeConflictLab/intelligent-reporting/issues"
+  },
+  "homepage": "https://github.com/MergeConflictLab/intelligent-reporting#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

@@ -31,14 +31,24 @@ class InsightsAgent(Agent):
 
             llm = ChatOllama(model="qwen3-vl:4b")
         else:
-            from langchain_openai.chat_models.azure import AzureChatOpenAI
+            try:
+                from langchain_openai.chat_models.azure import AzureChatOpenAI
 
-            llm = AzureChatOpenAI(
-                azure_deployment="gpt-5-nano",
-                api_version="2024-12-01-preview",
-                azure_endpoint=os.getenv("AZURE_ENDPOINT"),
-                api_key=os.getenv("API_KEY"),
-            )
+                llm = AzureChatOpenAI(
+                    azure_deployment="gpt-5-nano",
+                    api_version="2024-12-01-preview",
+                    azure_endpoint=os.getenv("AZURE_ENDPOINT"),
+                    api_key=os.getenv("API_KEY"),
+                )
+            except ImportError:
+                print(
+                    f"[{self.__class__.__name__}] 'langchain_openai' not found. Forcing offline mode (fallback logic required)."
+                )
+                # Insights Fallback is weird, it uses ChatOllama or FallbackManager?
+                # Existing code line 32 used ChatOllama. Let's use that.
+                from langchain_ollama import ChatOllama
+
+                llm = ChatOllama(model="qwen3-vl:4b")
 
         system_message = SystemMessage(
             content="""
