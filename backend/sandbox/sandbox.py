@@ -43,6 +43,7 @@ def run_in_docker_sandbox(
     # Save sample_data as CSV if provided
     if sample_data:
         import csv
+
         csv_path = os.path.join(data_dir_abs, filename)
         if sample_data:
             keys = sample_data[0].keys()
@@ -87,16 +88,18 @@ plt.savefig = _custom_savefig
         # where the files are on the HOST.
         # We assume the layout inside the container matches the host (relative to workdir)
         # OR we perform a prefix replacement.
-        container_cwd = os.getcwd() # e.g. /app
-        
+        container_cwd = os.getcwd()  # e.g. /app
+
         if mount_data_dir.startswith(container_cwd):
             mount_data_dir = mount_data_dir.replace(container_cwd, host_workdir, 1)
-        
+
         if mount_tasks_dir.startswith(container_cwd):
             mount_tasks_dir = mount_tasks_dir.replace(container_cwd, host_workdir, 1)
 
         if mount_outputs_dir.startswith(container_cwd):
-            mount_outputs_dir = mount_outputs_dir.replace(container_cwd, host_workdir, 1)
+            mount_outputs_dir = mount_outputs_dir.replace(
+                container_cwd, host_workdir, 1
+            )
 
     docker_cmd = [
         "docker",
@@ -117,10 +120,25 @@ plt.savefig = _custom_savefig
         f"/sandbox/code/{task_id}.py",
     ]
 
-    process = subprocess.Popen(
-        docker_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-    )
-    stdout, stderr = process.communicate()
+    try:
+        process = subprocess.Popen(
+            docker_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+        stdout, stderr = process.communicate()
+    except FileNotFoundError:
+        return {
+            "stdout": "",
+            "stderr": "Error: 'docker' command not found. Please ensure Docker is installed and in the PATH on the backend server.",
+            "artifacts": [],
+            "media": [],
+        }
+    except Exception as e:
+        return {
+            "stdout": "",
+            "stderr": f"Error running Docker: {str(e)}",
+            "artifacts": [],
+            "media": [],
+        }
 
     artifacts = [
         p

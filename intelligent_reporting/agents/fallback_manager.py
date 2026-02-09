@@ -29,8 +29,13 @@ atexit.register(cleanup_models)
 
 
 class FallbackResponse:
-    def __init__(self, content: str):
+    def __init__(self, content: str, usage: Optional[dict] = None):
         self.content = content
+        self.usage = usage or {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        }
 
 
 class FallbackLLM:
@@ -62,12 +67,25 @@ class FallbackLLM:
         try:
             from llama_cpp import Llama
 
+            # Auto-detect optimal threads: leave 1 core for system/sidecar
+            import multiprocessing
+
+            default_threads = max(1, multiprocessing.cpu_count() - 1)
+
+            n_threads = int(os.getenv("LLAMA_THREADS", default_threads))
+            n_ctx = int(os.getenv("LLAMA_CONTEXT_SIZE", 16384))
+            n_batch = int(os.getenv("LLAMA_BATCH_SIZE", 512))
+
+            print(
+                f"Loading local model with n_threads={n_threads}, n_ctx={n_ctx}, n_batch={n_batch}"
+            )
+
             self.model = Llama(
                 model_path=self.model_path,
                 n_gpu_layers=-1,
-                n_ctx=16384,
-                n_threads=2,
-                n_batch=512,
+                n_ctx=n_ctx,
+                n_threads=n_threads,
+                n_batch=n_batch,
                 verbose=False,
             )
             self.backend = "llamacpp_text"
@@ -189,7 +207,8 @@ class FallbackLLM:
                 max_tokens=2048,
             )
             output_text = response["choices"][0]["message"]["content"]
-            return FallbackResponse(output_text)
+            usage = response.get("usage", {})
+            return FallbackResponse(output_text, usage)
 
         except Exception as e:
             print(f"Error during generation: {e}")

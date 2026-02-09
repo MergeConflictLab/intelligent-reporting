@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [artifacts, setArtifacts] = useState<any[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [offlineMode, setOfflineMode] = useState(false); // New State
 
   // Intermediate Results State
   const [profileResult, setProfileResult] = useState<any>(null);
@@ -60,13 +61,13 @@ export default function Dashboard() {
         
         // Stage 2: Metadata
         setStage(2);
-        const metadataRes = await getMetadata(profileRes);
+        const metadataRes = await getMetadata(profileRes, offlineMode);
         setMetadataResult(metadataRes);
         setViewState(3); 
 
         // Stage 3: Supervisor
         setStage(3);
-        const supervisorRes = await runSupervisor(profileRes, metadataRes);
+        const supervisorRes = await runSupervisor(profileRes, metadataRes, offlineMode);
         setSupervisorResult(supervisorRes);
         setViewState(4); 
 
@@ -77,7 +78,7 @@ export default function Dashboard() {
         
         for (const task of tasks) {
             try {
-                const execRes = await executeTask(task, selectedFile.name, profileRes);
+                const execRes = await executeTask(task, selectedFile.name, profileRes, offlineMode);
 
                 // Add artifacts
                 if (execRes.artifacts && execRes.artifacts.length > 0) {
@@ -120,6 +121,8 @@ export default function Dashboard() {
         isProcessing={isProcessing}
         stage={stage} 
         artifactsCount={artifacts.length}
+        offlineMode={offlineMode}
+        onToggleOffline={setOfflineMode}
       />
       
       <main className="flex-1 flex flex-col md:grid md:grid-cols-12 gap-4 md:gap-6 p-4 md:p-6 overflow-hidden">

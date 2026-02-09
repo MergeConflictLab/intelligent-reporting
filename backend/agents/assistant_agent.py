@@ -12,9 +12,7 @@ class AssistantAgent(Agent):
     Agent responsible for generating Python code.
     """
 
-    def run(
-        self, supervisor_response: dict, path: str, offline_mode: bool = False
-    ):
+    def run(self, supervisor_response: dict, path: str, offline_mode: bool = False):
         """
         Generate Python code based on the supervisor's plan.
         """
@@ -94,9 +92,16 @@ DEFENSIVE CODING (CRITICAL):
             name = name.strip()
             code = code.strip()
 
+            # Capture usage
+            usage = {}
+            if hasattr(response, "usage"):  # FallbackResponse
+                usage = response.usage
+            elif hasattr(response, "response_metadata"):  # LangChain
+                usage = response.response_metadata.get("token_usage", {})
+
             print(f"[{self.__class__.__name__}] Code generation successful.")
             print(f"[{self.__class__.__name__}] Generated Code:\n{code}")
-            return {"name": name, "code": code}
+            return {"name": name, "code": code, "_usage": usage}
 
         except Exception as e:
             print(

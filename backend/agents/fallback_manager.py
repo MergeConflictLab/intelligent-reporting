@@ -29,8 +29,13 @@ atexit.register(cleanup_models)
 
 
 class FallbackResponse:
-    def __init__(self, content: str):
+    def __init__(self, content: str, usage: Optional[dict] = None):
         self.content = content
+        self.usage = usage or {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        }
 
 
 class FallbackLLM:
@@ -61,13 +66,23 @@ class FallbackLLM:
         """Try to load as text-only model."""
         try:
             from llama_cpp import Llama
+            import multiprocessing
+
+            default_threads = max(1, multiprocessing.cpu_count())
+            n_threads = int(os.getenv("LLAMA_THREADS", default_threads))
+            n_ctx = int(os.getenv("LLAMA_CONTEXT_SIZE", 16384))
+            n_batch = int(os.getenv("LLAMA_BATCH_SIZE", 512))
+
+            print(
+                f"Loading local model with n_threads={n_threads}, n_ctx={n_ctx}, n_batch={n_batch}"
+            )
 
             self.model = Llama(
                 model_path=self.model_path,
                 n_gpu_layers=-1,
-                n_ctx=8192,
-                n_threads=2,
-                n_batch=512,
+                n_ctx=n_ctx,
+                n_threads=n_threads,
+                n_batch=n_batch,
                 verbose=False,
             )
             self.backend = "llamacpp_text"
@@ -106,7 +121,9 @@ class FallbackLLM:
         if len(_MODEL_CACHE) >= MAX_CACHE_SIZE:
             # Simple FIFO eviction
             key_to_evict = next(iter(_MODEL_CACHE))
-            print(f"Cache full ({len(_MODEL_CACHE)}/{MAX_CACHE_SIZE}), evicting {key_to_evict}")
+            print(
+                f"Cache full ({len(_MODEL_CACHE)}/{MAX_CACHE_SIZE}), evicting {key_to_evict}"
+            )
             try:
                 model = _MODEL_CACHE[key_to_evict]
                 if hasattr(model, "close"):
@@ -116,6 +133,7 @@ class FallbackLLM:
             finally:
                 del _MODEL_CACHE[key_to_evict]
                 import gc
+
                 gc.collect()
 
         self._load_model()
@@ -173,8 +191,8 @@ class FallbackLLM:
                 ]
                 text_content = " ".join(text_parts)
                 if any(item.get("type") == "image_url" for item in content):
-                     text_content += "\\n\\n[Note: Image analysis unavailable - analyzing based on text data only]"
-                
+                    text_content += "\\n\\n[Note: Image analysis unavailable - analyzing based on text data only]"
+
                 llama_messages.append({"role": role, "content": text_content})
             else:
                 llama_messages.append({"role": role, "content": content})
@@ -186,7 +204,8 @@ class FallbackLLM:
                 max_tokens=2048,
             )
             output_text = response["choices"][0]["message"]["content"]
-            return FallbackResponse(output_text)
+            usage = response.get("usage", {})
+            return FallbackResponse(output_text, usage)
 
         except Exception as e:
             print(f"Error during generation: {e}")

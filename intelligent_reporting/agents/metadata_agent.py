@@ -76,6 +76,19 @@ class MetadataAgent(Agent):
             content = strip_code_fence(response.content)
             parsed = json_fix(content)
 
+            # Extract usage
+            usage = {}
+            if hasattr(response, "usage"):  # FallbackResponse
+                usage = response.usage
+            elif hasattr(response, "response_metadata"):  # LangChain
+                usage = response.response_metadata.get("token_usage", {})
+
+            if isinstance(parsed, list):
+                parsed = {"columns": parsed}
+
+            if isinstance(parsed, dict):
+                parsed["_usage"] = usage
+
             print(f"[{self.__class__.__name__}] Execution completed successfully.")
             print(f"[{self.__class__.__name__}] Output: {json.dumps(parsed, indent=2)}")
             return parsed
@@ -84,4 +97,15 @@ class MetadataAgent(Agent):
 
             llm = get_fallback_llm(task_type="text")
             response = llm.invoke(llm_prompt)
-            return json_fix(response.content.strip())
+            parsed = json_fix(response.content.strip())
+
+            # Extract usage from fallback
+            usage = getattr(response, "usage", {})
+
+            if isinstance(parsed, list):
+                parsed = {"columns": parsed}
+
+            if isinstance(parsed, dict):
+                parsed["_usage"] = usage
+
+            return parsed

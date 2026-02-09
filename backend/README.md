@@ -1,118 +1,81 @@
-# Agents
+# Intelligent Reporting Backend
 
-This folder contains the core agent modules for the Intelligent Reporting system. Each agent is a focused, testable component used to analyze data or orchestrate analysis workflows. Typical responsibilities include metadata extraction, plan generation, code generation, and insight summarization.
+This directory contains the FastAPI-based backend for the Intelligent Reporting system. It serves as the bridge between the frontend UI and the core agentic logic.
 
-## Run
+## Key Components
+
+- **API Layer**: `app/` contains the FastAPI application and route definitions.
+- **Agent Orchestration**: Uses the `intelligent_reporting` core library to manage Metadata, Supervisor, Assistant, and Insights agents.
+- **Sandbox**: Manages Docker containers for safe code execution.
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.10+
+- Docker (must be running)
+
+### Installation
+
+1. Create a virtual environment:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   ```
+
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Set up environment variables:
+   Copy `.env.example` to `.env` and fill in the necessary values (e.g., OpenAI API key if running in online mode).
+
+### Running the Server
 
 ```bash
-docker build -t llm-fastapi .
-docker run -d --network=host \
-  --memory=15g \
-  --shm-size=16g \
-  -e HOST_WORKDIR=$(pwd) \
-  -e OLLAMA_HOST=http://localhost:11434 \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /usr/bin/docker:/usr/bin/docker:ro \
-  -v $(pwd)/models:/app/models \
-  -v $(pwd)/sandbox/code:/app/sandbox/code \
-  -v $(pwd)/sandbox/output:/app/sandbox/output \
-  -v $(pwd)/sandbox/data:/app/sandbox/data \
-  llm-fastapi
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The API will be available at `http://0.0.0.0:8000`.
+The API will be available at `http://localhost:8000`.
+API Documentation is available at `http://localhost:8000/docs`.
 
-## Files in this folder
+### Docker Deployment
 
-- `metadata_agent.py` — Extracts structural metadata from datasets.
-- `supervisor_agent.py` — Creates an analysis plan from metadata and samples.
-- `assistant_agent.py` — Generates executable code for a specific analysis task.
-- `insights_agent.py` — Produces textual insights from charts and summaries.
+You can also build and run the backend as a Docker container:
 
-## Brief agent summaries
+```bash
+docker build -t intelligent-reporting-backend .
+docker run -d \
+  -p 8000:8000 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v $(pwd)/sandbox/data:/app/sandbox/data \
+  -v $(pwd)/sandbox/output:/app/sandbox/output \
+  -v $(pwd)/models:/app/models \
+  intelligent-reporting-backend
+```
 
-## Metadata Agent (`metadata_agent.py`)
+## API Documentation
 
-**Role**: Analyze dataset structure and produce a machine-readable description.
+Detailed API documentation can be found in [API_DOCUMENTATION.md](API_DOCUMENTATION.md).
 
-**Key function**: `metadata_query(model, sample_data, schema, description)`
+## Agents
 
-**Inputs**:
+The backend exposes several agent capabilities:
 
-- `model`: LLM identifier used for any text-generation steps.
-- `sample_data`: `List[dict]`, a small sample of rows.
-- `schema`: `dict` mapping column names to inferred types.
-- `description`: Optional human-provided column descriptions.
+- **Metadata Agent**: Extracts structural and semantic metadata from datasets.
+- **Supervisor Agent**: Generates analysis plans.
+- **Assistant Agent**: Generates and executes Python code.
+- **Insights Agent**: Interprets results and visualizations.
 
-**Outputs**:
+## Offline Mode
 
-- `dict` containing:
-  - `table_description`: short natural-language summary.
-  - `columns`: list of `{name, description}` entries.
+The backend supports an `offline_mode` which utilizes local GGUF models instead of external LLM APIs. Ensure you have the necessary models downloaded in the `models/` directory if you intend to use this feature.
 
-## Supervisor Agent (`supervisor_agent.py`)
+## Roadmap
 
-**Role**: Produce a prioritized analysis plan from metadata and data samples.
+- [ ] **Async Task Queue**: Implement Celery + Redis for handling long-running analysis tasks.
+- [ ] **Database Integration**: Replace in-memory caching with PostgreSQL for persistent agent state.
+- [ ] **Streaming Responses**: Support server-sent events (SSE) for real-time agent thought streaming.
+- [ ] **Security Hardening**: Enhanced sandbox isolation and API rate limiting.
 
-**Key function**: `supervisor_query(model, sample_data, description)`
-
-**Inputs**:
-
-- `model`: LLM name.
-- `sample_data`: small list of rows.
-- `description`: metadata output from the Metadata Agent.
-
-**Outputs**:
-
-- `dict` describing the plan, typically including:
-  - `libraries`: list of Python libraries to use (e.g., `pandas`, `polars`).
-  - `tasks`: list of task objects; each task commonly contains:
-    - `name`: short task title.
-    - `description`: intent or hypothesis to evaluate.
-    - `columns`: columns involved.
-    - `plot_type`: suggested visualization type.
-    - `preprocessing`: brief cleaning steps required.
-    - `code_template`: pseudo-code or template the Assistant can expand.
-
-## Assistant Agent (`assistant_agent.py`)
-
-**Role**: Turn a single Supervisor task into executable Python code.
-
-**Key function**: `assistant_query(supervisor_response, path, model="mistral")`
-
-**Inputs**:
-
-- `supervisor_response`: one task object from the Supervisor plan.
-- `path`: path to dataset file to run against.
-- `model`: LLM identifier (default: `mistral`).
-
-**Outputs**:
-
-- `dict` with keys such as:
-  - `name`: task name.
-  - `code`: executable Python code (string) that performs the analysis and
-    writes any plot files or outputs.
-
-## Insights Agent (`insights_agent.py`)
-
-**Role**: Produce human-readable insights from generated plots and summaries.
-
-**Key function**: `insights_query(img, summary_data, sample_data, description)`
-
-**Inputs**:
-
-- `img`: base64 or path to plot image.
-- `summary_data`: statistical summaries (e.g., result of `df.describe()`).
-- `sample_data`: small sample rows used for context.
-- `description`: high-level description of the analysis performed.
-
-**Outputs**:
-
-- `list` of insight objects with fields like:
-  - `insight`: brief finding.
-  - `reasoning`: explanation why the finding matters.
-  - `evidence`: supporting data points or visual cues.
-
-## Notes & development
-
-Agent responsibilities differ depending on the reporting mode. Automated EDA uses only the Metadata Agent and Insights Agent to generate a fully automated exploratory report. The Fully AI Reporting mode uses the entire agent stack — Metadata, Supervisor, Assistant, and Insights Agents — to produce an end-to-end analysis with planning, code generation, execution, visualization, and insight generation.

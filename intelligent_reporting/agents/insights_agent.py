@@ -84,6 +84,14 @@ Task Description: {json.dumps(description)}
             content = strip_code_fence(response.content)
             parsed = json_fix(content)
 
+            # Extract usage (InsightsAgent uses ChatOllama or Fallback via ChatOllama)
+            usage = getattr(response, "usage", {})
+            if not usage and hasattr(response, "response_metadata"):
+                usage = response.response_metadata.get("token_usage", {})
+
+            if isinstance(parsed, dict):
+                parsed["_usage"] = usage
+
             print(f"[{self.__class__.__name__}] Execution completed successfully.")
             print(f"[{self.__class__.__name__}] Output: {json.dumps(parsed, indent=2)}")
 

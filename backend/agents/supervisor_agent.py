@@ -86,6 +86,17 @@ class SupervisorAgent(Agent):
             # Remove markdown/code fences and attempt to parse JSON
             content = strip_code_fence(response.content)
             parsed = json_fix(content)
+
+            # Capture usage
+            usage = {}
+            if hasattr(response, "usage"):  # FallbackResponse
+                usage = response.usage
+            elif hasattr(response, "response_metadata"):  # LangChain
+                usage = response.response_metadata.get("token_usage", {})
+
+            if isinstance(parsed, dict):
+                parsed["_usage"] = usage
+
             print(f"[{self.__class__.__name__}] Execution completed successfully.")
             print(f"[{self.__class__.__name__}] Output: {json.dumps(parsed, indent=2)}")
             return parsed
@@ -95,5 +106,9 @@ class SupervisorAgent(Agent):
 
             llm = get_fallback_llm(task_type="text")
             response = llm.invoke(llm_prompt)
+            result = json_fix(response.content.strip())
 
-            return json_fix(response.content.strip())
+            if isinstance(result, dict) and hasattr(response, "usage"):
+                result["_usage"] = response.usage
+
+            return result

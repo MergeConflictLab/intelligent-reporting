@@ -1,6 +1,6 @@
 # Agentic Backend API Documentation
 
-> **Base URL:** `http://intelrepo.duckdns.org:8000/` 
+> **Base URL:** `http://localhost:8000`
 >
 > All endpoints accept `application/json` and return `application/json`.
 
@@ -27,11 +27,12 @@
 
 Check if the API is running and view cached agents.
 
-```
+```http
 GET /health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "ok",
@@ -45,11 +46,12 @@ GET /health
 
 Analyzes sample data and schema to generate enriched column descriptions.
 
-```
+```http
 POST /agents/metadata/run
 ```
 
 **Request Body:**
+
 ```json
 {
   "sample_data": [
@@ -78,6 +80,7 @@ POST /agents/metadata/run
 | `offline_mode` | `boolean` | ❌ | Use local models (default: `false`) |
 
 **Response:**
+
 ```json
 {
   "table_description": "Sales data containing transaction records...",
@@ -98,11 +101,12 @@ POST /agents/metadata/run
 
 Plans analysis tasks based on the metadata output.
 
-```
+```http
 POST /agents/supervisor/run
 ```
 
 **Request Body:**
+
 ```json
 {
   "sample_data": [
@@ -131,6 +135,7 @@ POST /agents/supervisor/run
 | `offline_mode` | `boolean` | ❌ | Use local models (default: `false`) |
 
 **Response:**
+
 ```json
 {
   "libraries": ["pandas", "matplotlib", "seaborn"],
@@ -157,11 +162,12 @@ POST /agents/supervisor/run
 
 Generates Python code for a specific task.
 
-```
+```http
 POST /agents/assistant/run
 ```
 
 **Request Body:**
+
 ```json
 {
   "supervisor_response": {
@@ -182,6 +188,7 @@ POST /agents/assistant/run
 | `offline_mode` | `boolean` | ❌ | Use local models (default: `false`) |
 
 **Response:**
+
 ```json
 {
   "name": "sales_by_category",
@@ -195,11 +202,12 @@ POST /agents/assistant/run
 
 Generates insights from a chart image.
 
-```
+```http
 POST /agents/insights/run
 ```
 
 **Request Body:**
+
 ```json
 {
   "img": "<base64-encoded-image-string>",
@@ -227,6 +235,7 @@ POST /agents/insights/run
 | `offline_mode` | `boolean` | ❌ | Use local models (default: `false`) |
 
 **Response:**
+
 ```json
 {
   "title": "Sales Distribution by Category",
@@ -247,11 +256,12 @@ POST /agents/insights/run
 
 Run any agent type with a dynamic payload. Useful for testing.
 
-```
+```http
 POST /agents/generic/run
 ```
 
 **Request Body:**
+
 ```json
 {
   "agent_type": "supervisor",
@@ -274,11 +284,12 @@ POST /agents/generic/run
 
 Execute Python code in an isolated Docker container.
 
-```
+```http
 POST /sandbox/run
 ```
 
 **Request Body:**
+
 ```json
 {
   "code": "import pandas as pd\ndf = pd.read_csv('/sandbox/data/data.csv')\nprint(df.head())\n\nimport matplotlib.pyplot as plt\nplt.figure()\ndf.plot()\nplt.savefig('/sandbox/output/chart.png')",
@@ -303,6 +314,7 @@ POST /sandbox/run
 | `filename` | `string` | ❌ | `"data.csv"` | Filename for sample_data |
 
 **Response:**
+
 ```json
 {
   "stdout": "   col1  col2\n0    a     1\n1    b     2",
@@ -336,6 +348,7 @@ All endpoints return HTTP 500 on failure with a JSON body:
 ```
 
 **Common Errors:**
+
 - `400 Bad Request` - Invalid agent type or malformed request
 - `500 Internal Server Error` - Agent execution failed
 
@@ -347,12 +360,12 @@ Here's how to use all endpoints together for a full analysis pipeline:
 
 ### Step 1: Check Health
 ```bash
-curl https://your-url.trycloudflare.com/health
+curl http://localhost:8000/health
 ```
 
 ### Step 2: Run Metadata Agent
 ```bash
-curl -X POST https://your-url.trycloudflare.com/agents/metadata/run \
+curl -X POST http://localhost:8000/agents/metadata/run \
   -H "Content-Type: application/json" \
   -d '{
     "sample_data": [{"product": "Widget", "sales": 100}],
@@ -364,7 +377,7 @@ curl -X POST https://your-url.trycloudflare.com/agents/metadata/run \
 
 ### Step 3: Run Supervisor Agent
 ```bash
-curl -X POST https://your-url.trycloudflare.com/agents/supervisor/run \
+curl -X POST http://localhost:8000/agents/supervisor/run \
   -H "Content-Type: application/json" \
   -d '{
     "sample_data": [{"product": "Widget", "sales": 100}],
@@ -375,7 +388,7 @@ curl -X POST https://your-url.trycloudflare.com/agents/supervisor/run \
 
 ### Step 4: Run Assistant Agent (for each task)
 ```bash
-curl -X POST https://your-url.trycloudflare.com/agents/assistant/run \
+curl -X POST http://localhost:8000/agents/assistant/run \
   -H "Content-Type: application/json" \
   -d '{
     "supervisor_response": {"name": "sales_chart", "description": "Create sales chart"},
@@ -386,7 +399,7 @@ curl -X POST https://your-url.trycloudflare.com/agents/assistant/run \
 
 ### Step 5: Execute Code in Sandbox
 ```bash
-curl -X POST https://your-url.trycloudflare.com/sandbox/run \
+curl -X POST http://localhost:8000/sandbox/run \
   -H "Content-Type: application/json" \
   -d '{
     "code": "import pandas as pd\nprint(\"Hello from sandbox!\")",
@@ -397,7 +410,7 @@ curl -X POST https://your-url.trycloudflare.com/sandbox/run \
 
 ### Step 6: Generate Insights (for each chart)
 ```bash
-curl -X POST https://your-url.trycloudflare.com/agents/insights/run \
+curl -X POST http://localhost:8000/agents/insights/run \
   -H "Content-Type: application/json" \
   -d '{
     "img": "<base64-image-from-sandbox-response>",
@@ -413,7 +426,7 @@ curl -X POST https://your-url.trycloudflare.com/agents/insights/run \
 ## JavaScript/TypeScript Example
 
 ```typescript
-const BASE_URL = "https://your-url.trycloudflare.com";
+const BASE_URL = "http://localhost:8000";
 
 // Health check
 async function checkHealth() {

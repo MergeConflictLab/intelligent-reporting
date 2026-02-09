@@ -100,7 +100,15 @@ DEFENSIVE CODING (CRITICAL):
 
             print(f"[{self.__class__.__name__}] Code generation successful.")
             print(f"[{self.__class__.__name__}] Generated Code:\n{code}")
-            return {"name": name, "code": code}
+
+            # Extract usage
+            usage = {}
+            if hasattr(response, "usage"):  # FallbackResponse
+                usage = response.usage
+            elif hasattr(response, "response_metadata"):  # LangChain
+                usage = response.response_metadata.get("token_usage", {})
+
+            return {"name": name, "code": code, "_usage": usage}
 
         except Exception as e:
             print(
@@ -123,4 +131,6 @@ DEFENSIVE CODING (CRITICAL):
                 name = "fallback_task"
                 code = raw
 
-            return {"name": name.strip(), "code": code.strip()}
+            # Extract usage
+            usage = getattr(response, "usage", {})
+            return {"name": name.strip(), "code": code.strip(), "_usage": usage}
